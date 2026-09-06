@@ -1,0 +1,6 @@
+[submodule "tutorials"]
+	path = tutorials
+	url = https://github.com/tomato-tomato/rust-lathe-tutorials.git
+[submodule "code"]
+	path = code
+	url = https://github.com/tomato-tomato/rust-lathe-code.git
