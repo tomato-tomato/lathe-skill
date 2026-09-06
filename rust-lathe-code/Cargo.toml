@@ -1,3 +1,0 @@
-[workspace]
-members = ["todo-cli-rust"]
-resolver = "2"
