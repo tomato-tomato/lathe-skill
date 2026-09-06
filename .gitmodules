@@ -1,3 +1,0 @@
-[submodule "code/todo-cli-rust"]
-	path = code/todo-cli-rust
-	url = https://github.com/tomato-tomato/todo-cli-rust.git
