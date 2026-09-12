@@ -2,11 +2,11 @@
 
 帮助用户制作**自定义写作语气**——一种语气/风格预设，供生成和续写教程时使用——然后将其持久化为文件。
 
-voice **仅控制语气和风格**。它绝不改变准确性、研究、引用、验证、内容、教学法或结构——这些是 `<SKILL_DIR>/SKILL.md` 中的固定不变量。
+voice **仅控制语气和风格**。它绝不改变准确性、研究、引用、验证、内容、教学法或结构——这些是 `<SKILL_DIR>/references/writing-core.md`"不变量"一节的固定规则。
 
 ## 内置 voice
 
-本节是内置 voice 完整规范的**单一事实源**（`<SKILL_DIR>/SKILL.md` 仅保留一行索引）。内置 voice 不写入 `<TUTORIALS_DIR>/voices/`——该目录只存放自定义 voice。
+本节是内置 voice 完整规范的**单一事实源**。写作型操作仅在 `metadata.json` 的 `voice` 字段为 `companion` 或 `craftsman` 时才读本节；默认的 `plainspoken` 按 `<SKILL_DIR>/references/writing-core.md`"voice 的应用"一行摘要写作即可，不要加载本文件。内置 voice 不写入 `<TUTORIALS_DIR>/voices/`——该目录只存放自定义 voice。
 
 ### Plainspoken（内置默认）
 
@@ -67,7 +67,7 @@ voice **仅控制语气和风格**。它绝不改变准确性、研究、引用�
    该 voice 拒绝的语气反模式。
 
    ## 校准——对比
-   两三对 ❌/✅ 语气对比（不是教学法对比；教学法对比在 `<SKILL_DIR>/references/generate.md` 中）。
+   两三对 ❌/✅ 语气对比（不是教学法对比；教学法对比在 `<SKILL_DIR>/references/writing-core.md`"内容与教学法"中）。
    > ❌ ...
    > ✅ ...
    ```
@@ -89,4 +89,5 @@ voice **仅控制语气和风格**。它绝不改变准确性、研究、引用�
 ## 边界
 
 - **唯一的持久化写入** 是将 voice 文件写入 `<TUTORIALS_DIR>/voices/<名称>.md`。
+- **创建 voice 不需要读取 writing-core.md 或 style-benchmarks.md**——本操作不写教程，只起草一份语气规范。
 - 仅创作语气。如果用户想改变教学法、结构或准确性行为，那是对教程生成规则的修改，不是 voice——要明确说明。
