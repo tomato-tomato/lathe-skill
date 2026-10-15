@@ -11,7 +11,8 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 
 | 场景 | 是否需要 |
 |------|----------|
-| 新建 metadata（生成、扫描登记、自愈重建） | ✅ 必读 |
+| 新建 metadata（**生成**） | ❌ **不读**——`generate.md`"写完之后"已内联 JSON 骨架与字段表 |
+| 新建 metadata（扫描登记、自愈重建） | ✅ 必读 |
 | 写入 `continuity` 摘要（续写、收尾） | ✅ 必读 |
 | 只读取几个已知字段（提问、列表、验证、标签） | ❌ 按字段名直接读 JSON 即可 |
 

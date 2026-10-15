@@ -10,7 +10,7 @@
 2. **一轮分组提问**（见下方）——把保存位置、slug、经验水平、语气（voice）、澄清问题、仓库、工具链版本、学习目标合并为一次询问，避免多轮往返。
 3. **确认 slug 可用**（见下方"slug 与目录冲突检查"）——**在写研究和正文之前完成**，避免白写一遍才发现撞名。
 4. **确定教程语言**（见 `<SKILL_DIR>/SKILL.md`"教程语言"）——默认跟随对话语言，无需单独提问。
-5. **选定风格主锚点**：读取 `<SKILL_DIR>/references/style-benchmarks.md` 场景侧重表，按主题匹配主锚点，记下其 id 待写入 `style_anchor`。
+5. **选定风格主锚点**：按 `<SKILL_DIR>/SKILL.md`「风格主锚点速查」表匹配主锚点，记下其 id 待写入 `style_anchor`。**只选 id 时不读 `style-benchmarks.md`**；仅当需要理解该锚点的具体写作手法时才读它的「标杆作者」表。
 6. **先研究主题**（见 writing-core.md"先研究"，含检索预算）——这是确保准确性的最关键步骤。
 7. 静默执行**预检**（见 writing-core.md）。不要让用户审批。
 8. 撰写第一部分（结构见 writing-core.md"教程结构"）。
@@ -23,7 +23,7 @@
 
 ## 一轮分组提问（研究之前）
 
-用**一条消息**分组收集写作前需要的全部信息，不要拆成多轮问答：
+用**一条消息**分组收集写作前需要的全部信息，不要拆成多轮问答。**除"保存位置"外，其余各项一律先给出建议默认值并标注 `[默认]`——用户回复"可以"即全部采纳；只有用户明确反对某一项时才展开追问。**
 
 1. **保存位置（每次生成都问）：** 展示 config 中的默认目录并确认——*"本教程将保存到 `~/others/lathe_tutorials/`（默认目录），要换个位置吗？"* 用户给出新路径则本教程存到那里，否则用默认值。**这一项必须先问出、拿到回答再动笔**——即使在没有选择框 UI 的终端 Agent（如 Reasonix、Claude Code、Codex）里，也要以纯文本明确问出；用户回车/未指定即视为采用默认目录，但不得直接静默跳过。
 2. **教程 slug：** 由主题推导一个 kebab-case 短名称并**展示给用户确认**——*"目录名将是 `todo-cli-rust`，可以吗？"* 这是教程的永久标识和目录名，用户此后靠它调用所有其他操作，所以必须让他知道，不要静默决定。
@@ -35,6 +35,8 @@
 8. **学习目标（goal）：** 基于主题与经验水平提炼一句可评估的学习目标（如*"掌握用 Rust 构建 CLI 应用的完整流程：参数解析、持久化、测试"*），在同一条消息中展示确认（可与工具链版本合并为一条）。该目标是后续续写时"目标达成回顾"与收尾完结的判定基准。
 
 锁定的版本是写作约束：引用与版本相关的行为时注明版本，锚定到锁定的版本。用户对某项未作答时采用合理默认值并告知，不再追问。
+
+**各项的建议默认值**（未作答即采用，并在同一条消息里标注为 `[默认]`）：slug = 由主题推导的 kebab-case；经验水平 = `familiar`；voice = `plainspoken`；澄清问题 = 不追加；仓库 = 无（独立教程）；工具链版本 = 该生态当前稳定版（写出具体版本号）；goal = 由主题与经验水平提炼的一句。**保存位置没有默认值，必须问出回答。**
 
 ## slug 与目录冲突检查（写作之前，必做）
 
@@ -88,12 +90,12 @@
 
 **1. 写入** `part-01.md` —— 教程内容。
 
-**2. 写入 `metadata.json`** —— 完整结构见 `<SKILL_DIR>/references/metadata.md`。逐字段核对：
+**2. 写入 `metadata.json`** —— 按下方 JSON 骨架与字段表逐项填写。**字段表已足够时不要读 `metadata.md`**；仅当需要 `continuity` 的详细语义、或触发 metadata 自愈时才读它。逐字段核对：
 
 | 字段 | 取值 |
 |------|------|
 | `_warning` | 必须保留（原文照抄 metadata.md 中的文案） |
-| `lathe_version` | 当前技能版本（见 SKILL.md 顶部） |
+| `lathe_version` | 当前技能版本（见 SKILL.md「版本」节） |
 | `slug` / `title` / `topic` | 用户确认的 slug、教程标题、用户原始主题描述 |
 | `created` | 当前时间的 ISO 8601 时间戳 |
 | `goal` | 分组提问中确认的学习目标（用户未确认时取你提炼的版本并告知） |
@@ -109,9 +111,47 @@
 | `voice` / `model` | 使用的 voice 名称 / 你运行的模型（如 `QoderWork`） |
 | `continuity` | **必须初始化**——`controlling_example`、`fixed_numbers`、`metaphor`（无则空串）、`metaphor_retired: false`、`covered_concepts`（本部分讲透的概念）、`next_hook`（`## 接下来` 指向的方向）、`part_titles`（`{"part-01.md": "<一级标题>"}`）、`updated_through: "part-01.md"`、`updated_at`。这一步让后续续写无需重读全部历史部分 |
 
+骨架（字段含义与自愈协议见 `metadata.md`）：
+
+```json
+{
+  "_warning": "⚠️ 本文件是该教程的索引文件，请勿删除。误删后 lathe 将无法识别此教程；可运行 /lathe 标签 <slug> 或任一写入型操作触发自愈重建。",
+  "lathe_version": "<当前技能版本>",
+  "slug": "<kebab-case 短名称>",
+  "title": "<教程标题>",
+  "topic": "<用户的原始主题描述>",
+  "goal": "<一句可评估的学习目标>",
+  "created": "<ISO 8601 时间戳>",
+  "status": "unverified",
+  "tags": ["<标签1>", "<标签2>"],
+  "parts": ["part-01.md"],
+  "language": "<如 zh-CN>",
+  "experience_level": "beginner | familiar | experienced",
+  "style_anchor": "<主锚点 id>",
+  "repo": "<远程 URL 或空>",
+  "repo_branch": "<分支或空>",
+  "local_project_path": "<本地项目路径或空>",
+  "tools": [{"name": "<工具>", "version": "<版本>"}],
+  "sources": ["<url1>"],
+  "voice": "plainspoken",
+  "model": "<你运行的模型>",
+  "continuity": {
+    "controlling_example": "<贯穿全课程的具体产物，一句话>",
+    "fixed_numbers": {"<名称>": "<值>"},
+    "metaphor": "<控制性隐喻，无则空字符串>",
+    "metaphor_retired": false,
+    "covered_concepts": ["<本部分讲透的概念>"],
+    "next_hook": "<本部分 ## 接下来 指向的方向>",
+    "part_titles": {"part-01.md": "<一级标题>"},
+    "updated_at": "<ISO 8601 时间戳>",
+    "updated_through": "part-01.md"
+  }
+}
+```
+
 > `verify_workspace` 不在生成时写入——它由 `/lathe 验证` 首次创建 `.lathe-verify/` 工作区时补上。
 
-**3. 登记位置** —— 更新 `~/.lathe/config.json`，在 `tutorial_paths` 中写入 `"<slug>": "<本次使用的目录>"`（保留已有条目不动）。
+**3. 登记位置（仅当需要时）** —— **若本次保存位置等于 `tutorials_base_path`，跳过本步**（`tutorial_paths` 缺失即等价于"所有教程都在默认基础目录"，见 `<SKILL_DIR>/SKILL.md`"教程存储路径配置"）。仅当保存到**其他目录**时，才更新 `~/.lathe/config.json`，在 `tutorial_paths` 中写入 `"<slug>": "<本次使用的目录>"`（保留已有条目不动）。
 
 然后告诉用户：
 - "**教程已保存**到 `<实际保存目录>/<slug>/`。"

@@ -1,14 +1,12 @@
 ---
 name: lathe
-version: 0.5.2
+version: 0.5.3
 description: 按需生成、续写、复习、验证、提问动手实践型技术教程。当用户说 /lathe 并附带主题时使用，如 "/lathe 用 Zig 构建数字合成器"；也处理续写(extend)、收尾完结(finish)、复习(review)、验证(verify)、提问(ask)、打标签(tag)、创建语气(voice)、扫描登记(scan)和列出教程(list)等所有教程相关操作。支持中文和英文关键词。
 ---
 
 # Lathe — 教程体系
 
-**技能版本：v0.5.2**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）
-
-Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续写、收尾、复习、验证、提问、标签、语气、扫描、列表十项功能。质量基准线由 `references/style-benchmarks.md` 的标杆作者定义（仅生成教程时加载）。
+Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续写、收尾、复习、验证、提问、标签、语气、扫描、列表十项功能。质量基准线由 `references/style-benchmarks.md` 的标杆作者定义（生成时按下方「风格主锚点速查」表只选一个 id；需要理解具体写作手法时才加载该文件）。
 
 ## 使用方式
 
@@ -63,8 +61,37 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 | 文件 | 内容 | 何时读取 |
 |------|------|----------|
 | [references/writing-core.md](references/writing-core.md) | 教程结构、标注类型与配额、不变量、研究纪律、预检、写法细节、交付前自检 | **仅写作型操作**：生成、续写、收尾、复习 |
-| [references/metadata.md](references/metadata.md) | `metadata.json` 完整结构、`continuity` 摘要规范、自愈协议 | 新建 metadata、写 `continuity`、或遇到 metadata 缺失/损坏时 |
-| [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者表与场景侧重表 | 仅生成教程时选定主锚点；续写沿用 `style_anchor` 字段，不再读取 |
+| [references/metadata.md](references/metadata.md) | `metadata.json` 完整结构、`continuity` 摘要规范、自愈协议 | 写 `continuity`、或遇到 metadata 缺失/损坏需自愈时；**生成时字段速查表已足够，不读** |
+| [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者表与场景侧重表 | **仅当需要理解某锚点的具体写作手法时**；只选 id 用下方「风格主锚点速查」表，不读本文件 |
+
+**反向清单——明确不要读取**（读多了会挤占上下文并拖慢执行）：
+
+- **生成新教程：** 不要读 `extend.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`；`voice.md` 仅在 voice 非 `plainspoken` 时读；`metadata.md` 仅在字段速查表不足或需自愈时读。
+- **续写 / 收尾：** 不要读 `generate.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`。
+- **复习：** 不要读 `generate.md`、`extend.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`。
+- **验证：** 不要读 `writing-core.md`、`generate.md`、`extend.md`、`review.md`、`style-benchmarks.md`。
+- **提问 / 标签 / 列表 / 扫描：** 不要读 `writing-core.md`、`generate.md`、`extend.md`、`review.md`、`verify.md`、`style-benchmarks.md`。
+
+> 判据：只读上方"何时读取"列为"是"的文件；本清单是它的补集，两者不应有交集。
+
+## 风格主锚点速查
+
+生成新教程时按主题选定**一个**主锚点，把其 id 写入 `metadata.json` 的 `style_anchor`（续写 / 复习 / 收尾从 metadata 读取，不重选、不加载 `style-benchmarks.md`）。
+
+| 主题场景 | 主锚点 id |
+|----------|-----------|
+| 构建编译器 / 解释器 / 语言工具 | `nystrom` |
+| 算法 / 数据结构 / 数学可视化 | `amit-patel` |
+| 系统底层 / 硬件 / 协议拆解 | `ciechanowski` |
+| 分布式系统 / 基础设施 | `sam-who` |
+| 日常工具 / 去神秘化 / 入门 | `julia-evans` |
+| 系统架构 / 工程权衡 | `kleppmann` |
+| Rust 语言相关 | `klabnik-nichols` |
+| 涉及记忆 / 回顾机制设计 | `matuschak` |
+| 底层原理 / 追本溯源 | `bernhardt` |
+| 需要"让概念可见"的交互 | `bret-victor` |
+
+**本表是 `references/style-benchmarks.md`「场景侧重」表的投影**——两者同为 `style_anchor` 的合法取值来源，**id 只有这 10 个，不得自创**。主题跨多个场景时选最强的一个作主锚点，其余为辅。**需要理解某锚点的具体写作手法时**（如"nystrom 式章节独立成篇"具体指什么）才去读 `style-benchmarks.md` 的「标杆作者」表。
 
 ## 教程存储路径配置
 
@@ -128,3 +155,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 ## 保持会话
 
 无论执行哪个操作，完成后不要结束会话。保持可用以回答后续问题。你是他们在该主题上的专家向导。
+
+## 版本
+
+**技能版本：v0.5.3**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）
