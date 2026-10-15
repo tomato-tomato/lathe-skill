@@ -6,7 +6,7 @@ description: 按需生成、续写、复习、验证、提问动手实践型技�
 
 # Lathe — 教程体系
 
-Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续写、收尾、复习、验证、提问、标签、语气、扫描、列表十项功能。质量基准线由 `references/style-benchmarks.md` 的标杆作者定义（生成时按下方「风格主锚点速查」表只选一个 id；需要理解具体写作手法时才加载该文件）。
+Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续写、收尾、复习、面试文档、验证、提问、标签、语气、扫描、列表十一项功能。质量基准线由 `references/style-benchmarks.md` 的标杆作者定义（生成时按下方「风格主锚点速查」表只选一个 id；需要理解具体写作手法时才加载该文件）。
 
 ## 使用方式
 
@@ -14,9 +14,10 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 ```
 /lathe <主题>                          → 生成新教程
-/lathe 续写|extend <slug> [指导]       → 续写教程下一部分
+/lathe 续写|extend <slug> [指导]       → 续写教程下一部分（该教程已有面试文档时，自动同步本部分）
 /lathe 续写 收尾 <slug>                → 生成总结部分并完结课程
 /lathe 复习|review <slug>              → 生成复习材料（不改变课程方向）
+/lathe 面试|interview <slug> [part]    → 生成或补齐面试文档（详见 references/interview.md）
 /lathe 验证|verify <slug>              → 端到端验证教程
 /lathe 提问|ask <slug> <part> <问题>   → 提问教程内容
 /lathe 标签|tag <slug>                 → 管理教程标签
@@ -24,6 +25,8 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 /lathe 扫描|scan [目录]                → 登记磁盘上未被识别的教程
 /lathe 列表|list [slug]                → 列出所有教程或查看某教程状态
 ```
+
+面试文档也可从复习或生成进入：`/lathe 复习 <slug> 面试 [part-NN]`、`/lathe <主题> 面试`。
 
 也支持纯自然语言触发（无需 `/lathe`），AI 会自动识别意图。中文和英文关键词均可识别。
 
@@ -34,9 +37,10 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 | 用户意图 | 识别关键词（中文 / 英文） | 使用示例 | 读取模块 |
 |----------|-------------------------|----------|----------|
 | **生成新教程** | 主题描述（无下述关键词时） / topic description | `/lathe 用 Go 构建 Raft` | [references/generate.md](references/generate.md) |
-| **续写教程** | 续写、继续、下一部分 / extend、continue、next、add、part | `/lathe extend raft-go` 或 `/lathe 续写 raft-go` | [references/extend.md](references/extend.md) |
+| **续写教程** | 续写、继续、下一部分 / extend、continue、next、add、part | `/lathe extend raft-go` 或 `/lathe 续写 raft-go`（该教程已有面试文档时自动同步本部分） | [references/extend.md](references/extend.md) |
 | **收尾完结** | 续写/extend + 收尾、完结、总结 / finish、wrap up | `/lathe 续写 收尾 raft-go` | [references/extend.md](references/extend.md)（收尾模式） |
-| **复习教程** | 复习、回顾 / review、revise、recap | `/lathe 复习 raft-go` 或 `/lathe review raft-go` | [references/review.md](references/review.md) |
+| **复习教程** | 复习、回顾 / review、revise、recap | `/lathe 复习 raft-go` 或 `/lathe review raft-go` | [references/review.md](references/review.md)（**含 `面试` token 时转** [references/interview.md](references/interview.md)） |
+| **面试文档** | 面试、interview（作为首个 token 且后跟已存在的 slug） | `/lathe 面试 raft-go` 或 `/lathe 面试 raft-go part-02` | [references/interview.md](references/interview.md) |
 | **验证教程** | 验证、检查、测试 / verify、check、test、validate | `/lathe verify raft-go` 或 `/lathe 验证 raft-go` | [references/verify.md](references/verify.md) |
 | **提问内容** | 提问、问、问题 / ask、question | `/lathe ask raft-go part-01 why use ring buffer` | [references/ask.md](references/ask.md) |
 | **管理标签** | 标签、打标签 / tag、tags、label | `/lathe tag raft-go` 或 `/lathe 标签 raft-go` | [references/tag.md](references/tag.md) |
@@ -47,10 +51,11 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 **路由规则：**
 
 1. 解析 `/lathe` 后的第一个关键词来确定意图。中英文关键词等价。疑问词（为什么、怎么 / why、how、what）**仅在同时给出已知 slug 时**视为提问意图，否则按歧义处理——避免把 `/lathe 怎么用` 这类话误判为 ask。
-2. **意图不明确时，先询问再执行。不要默认生成教程。** 歧义情形：只输入 `/lathe`、只给一个 slug（可能是续写/验证/提问/复习）、含糊表达（`/lathe 这个教程怎么样`、`/lathe how is this tutorial`）。此时**以上方路由表为清单**，列出十项操作（带简短说明）让用户选编号或关键词；用户选定的意图若缺参数（如续写需要 slug），补充询问后再读取模块。
+2. **`面试` / `interview` 的识别**：必须是**独立 token**（前后为空白、行尾或标点）。两种成立方式——① 出现在 `复习` 语境中（`/lathe 复习 <slug> 面试`）；② 作为**首个 token** 且**后跟一个已存在的 slug**（`/lathe 面试 <slug>`）。不满足时视为**主题的一部分**，走正常生成（如 `/lathe 面试题生成器怎么做` → 生成教程）。不确定时**先问**，不要默认进入面试模式。
+3. **意图不明确时，先询问再执行。不要默认生成教程。** 歧义情形：只输入 `/lathe`、只给一个 slug（可能是续写/验证/提问/复习/面试）、含糊表达（`/lathe 这个教程怎么样`、`/lathe how is this tutorial`）。此时**以上方路由表为清单**，列出十一项操作（带简短说明）让用户选编号或关键词；用户选定的意图若缺参数（如续写需要 slug），补充询问后再读取模块。
    反例——这些是**明确**的，不要多问：`/lathe 用 Go 构建 Raft`（主题 → 生成）、`/lathe 续写 raft-go`、`/lathe 验证 raft-go`。
-3. 纯自然语言触发（不含 `/lathe`）时通过上下文语义匹配意图，中英文均可。
-4. 各模块文件可能引用下方共享配置或 `references/` 下的其他共享文件。
+4. 纯自然语言触发（不含 `/lathe`）时通过上下文语义匹配意图，中英文均可。
+5. 各模块文件可能引用下方共享配置或 `references/` 下的其他共享文件。
 
 ## 技能目录与共享文件
 
@@ -60,17 +65,18 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 | 文件 | 内容 | 何时读取 |
 |------|------|----------|
-| [references/writing-core.md](references/writing-core.md) | 教程结构、标注类型与配额、不变量、研究纪律、预检、写法细节、交付前自检 | **仅写作型操作**：生成、续写、收尾、复习 |
+| [references/writing-core.md](references/writing-core.md) | 教程结构、标注类型与配额、不变量、研究纪律、预检、写法细节、交付前自检 | **仅写作型操作**：生成、续写、收尾、复习、面试文档（面试文档**只用**其中的检索预算与「有据可依或标记」不变量） |
 | [references/metadata.md](references/metadata.md) | `metadata.json` 完整结构、`continuity` 摘要规范、自愈协议 | 写 `continuity`、或遇到 metadata 缺失/损坏需自愈时；**生成时字段速查表已足够，不读** |
 | [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者表与场景侧重表 | **仅当需要理解某锚点的具体写作手法时**；只选 id 用下方「风格主锚点速查」表，不读本文件 |
 
 **反向清单——明确不要读取**（读多了会挤占上下文并拖慢执行）：
 
-- **生成新教程：** 不要读 `extend.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`；`voice.md` 仅在 voice 非 `plainspoken` 时读；`metadata.md` 仅在字段速查表不足或需自愈时读。
-- **续写 / 收尾：** 不要读 `generate.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`。
-- **复习：** 不要读 `generate.md`、`extend.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`。
-- **验证：** 不要读 `writing-core.md`、`generate.md`、`extend.md`、`review.md`、`style-benchmarks.md`。
-- **提问 / 标签 / 列表 / 扫描：** 不要读 `writing-core.md`、`generate.md`、`extend.md`、`review.md`、`verify.md`、`style-benchmarks.md`。
+- **生成新教程：** 不要读 `extend.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`；`voice.md` 仅在 voice 非 `plainspoken` 时读；`metadata.md` 仅在字段速查表不足或需自愈时读；`interview.md` **仅在本次带 `面试` 参数时**读。
+- **续写 / 收尾：** 不要读 `generate.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`。**`interview.md` 是例外**——该教程已有面试文档时读它以追加本部分分段，或带 `面试` 参数时读它以创建文档。
+- **复习：** 不要读 `generate.md`、`extend.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`；**含 `面试` token 时改读 `interview.md`**（本文件下方协议不再适用）。
+- **面试文档：** 不要读 `generate.md`、`extend.md`、`review.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`、`style-benchmarks.md`；`metadata.md` 仅在需自愈时读。
+- **验证：** 不要读 `writing-core.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`style-benchmarks.md`。
+- **提问 / 标签 / 列表 / 扫描：** 不要读 `writing-core.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`verify.md`、`style-benchmarks.md`。
 
 > 判据：只读上方"何时读取"列为"是"的文件；本清单是它的补集，两者不应有交集。
 
@@ -126,6 +132,32 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 - 后文中 `<TUTORIALS_DIR>` 指**默认基础目录**（`tutorials_base_path`）；涉及具体教程时按上述规则解析到其实际所在目录。`voices/` 目录始终位于默认基础目录下。
 
 > 兼容性：仅含 `tutorials_base_path` 的旧 config 继续可用——等价于 `tutorial_paths` 缺失的状态，已有教程无需迁移。
+
+### 面试文档路径配置
+
+面试文档（每个 slug 一个 Markdown 文件，详见 [references/interview.md](references/interview.md)）的位置用**另外两个可选字段**记录，缺失即走下一档：
+
+```json
+{
+  "interview_base_path": "~/Code/agent-transition/interview",
+  "interview_paths": {
+    "nest-kb-service": "~/Code/agent-transition/interview/阶段一_NestJS与服务端基础"
+  }
+}
+```
+
+| 顺序 | 条件 | 文档路径 |
+|------|------|----------|
+| 1 | `interview_paths[<slug>]` 存在 | `<该目录>/<slug>.md` |
+| 2 | `interview_base_path` 存在 | `<该目录>/<slug>.md` |
+| 3 | 都没有 | `<教程目录>/<slug>/interview.md` |
+
+**位置确认规则：**
+
+- **文档不存在**（首次创建）→ **必须询问**：展示解析出的默认路径并确认；用户改位置则写入 `interview_paths[<slug>]`。**不得静默跳过。**
+- **文档已存在** → **不询问**，沿用当前位置，仅在结果里一行播报。
+
+> 兼容性：两个字段都可选，旧 config 缺失即走第 3 档，无需迁移。
 
 ## metadata.json 速查
 

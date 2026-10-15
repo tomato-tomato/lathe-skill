@@ -11,6 +11,8 @@
 
 中文关键词 `复习`、`回顾` 与英文 `review`、`revise`、`recap` 等价。
 
+**分支——面试文档模式：** 若参数含**独立的** `面试` / `interview` token，本操作**转为面试文档模式**，改按 `<SKILL_DIR>/references/interview.md` 执行（粒度可选 `part-NN`；文档不存在时会先与你确认存储位置，文档已存在但不完善时会先与你确认补写范围）。**无该 token 时，下方协议完全不变。**
+
 ## 协议
 
 0. **解析教程位置。** 按 `<SKILL_DIR>/SKILL.md`"教程位置解析规则"找到该 slug 的实际目录。**若 `metadata.json` 缺失或损坏**，先执行 `<SKILL_DIR>/references/metadata.md`"metadata.json 自愈"，重建确认后再继续。
