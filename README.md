@@ -14,9 +14,11 @@
 
 **v0.5.3 新增**：**面试文档**（`/lathe 面试 <slug>`——按 Part 分章的面试要点文档，支持从生成/复习/续写三条路径产出，续写时自动同步，并带遗漏检测与补写确认）；同时做了**一轮生成提速与加载精简**（研究分级触发、预检/自检去重、配额前置、加载集 47.6 KB → 41.5 KB）。
 
+**v0.5.3.1 优化**：**配额矩阵 + 主题新颖度分级**——新增 `topic_novelty`、`course_plan`、`continuity.open_threads`；检索预算、地基章节、标注、概念锚定按「全新 / 相邻 / 熟悉」三档自适应；continuity 扩到 1200 字软上限 / 2000 字硬上限，减少长课程重读与漂移；练习、代码块、图表与自检规则同步调整为"教学脚手架优先，装饰性旁白收紧"。
+
 **安装使用：** 从本仓库的 GitHub Releases 页面下载最新版本的技能包（`lathe-x.y.z.zip`），解压后将 `lathe/` 目录复制到 QoderWork 的技能目录即可，详细步骤见 [使用教程](./docs/skills-tutorial.md)。
 
-> 🔄 **技能仍在持续迭代** —— 当前版本 **v0.5.3**。每次更新的内容见 [Releases](https://github.com/tomato-tomato/my-rust-lathe-courses/releases)；使用教程 [docs/skills-tutorial.md](./docs/skills-tutorial.md) 会随版本同步更新。欢迎提 Issue 反馈问题或建议。
+> 🔄 **技能仍在持续迭代** —— 当前版本 **v0.5.3.1**。每次更新的内容见 [Releases](https://github.com/tomato-tomato/my-rust-lathe-courses/releases)；使用教程 [docs/skills-tutorial.md](./docs/skills-tutorial.md) 会随版本同步更新。欢迎提 Issue 反馈问题或建议。
 
 非常感谢 Lathe 这个工具 🙏 ！终于让我找到适合自己的学习 Rust 的方法。
 

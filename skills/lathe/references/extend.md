@@ -2,7 +2,7 @@
 
 为已存储的教程添加下一部分。新部分必须延续*该*教程——它的示例、它的数字、它的 voice、它的风格锚点——而不是一篇全新的泛化教程。
 
-**先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md`（教程结构与续写变体、标注配额、不变量、研究纪律、预检、写法细节、交付前自检）。本文件只补充续写特有的流程。
+**先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md`（教程结构与续写变体、配额矩阵、标注配额、不变量、研究纪律、预检、写法细节、交付前自检）。本文件只补充续写特有的流程。
 
 **触发格式：**
 
@@ -47,11 +47,13 @@
 | **控制性示例与固定数字** | `continuity.controlling_example` / `fixed_numbers` | 精确复用，不得替换或漂移 |
 | **控制性隐喻** | `continuity.metaphor` / `metaphor_retired` | 已告别（`true`）则不再重启该隐喻 |
 | **已覆盖概念** | `continuity.covered_concepts` | 不重复教学；也是 `[!RECALL]` 的取材池 |
-| **本次任务方向** | `continuity.next_hook` | 上一部分"接下来"指向的方向——除非用户的指导重新定向，否则这就是你的任务 |
+| **本次任务方向** | `continuity.next_hook` / `course_plan` | 上一部分"接下来"指向的方向；若 `course_plan` 存在，优先按路线图的下一项推进。除非用户的指导重新定向，否则这就是你的任务 |
 | **voice** | `voice` | 沿用，不重新选择、不漂移（加载规则见 writing-core.md） |
 | **正文语言** | `language` | 保持同一语言；缺失时按已有部分推断并在步骤 6 补上 |
 | **风格主锚点** | `style_anchor` | 沿用，**不读取 style-benchmarks.md**；缺失时按已有部分节奏推断并补上 |
 | **读者水平** | `experience_level` | 决定概念锚定的类比深度（见 writing-core.md"概念锚定"）；缺失时按已有部分推断并补上 |
+| **主题新颖度** | `topic_novelty` | 决定本次的检索预算、地基章节、标注与概念锚定配额（见 writing-core.md"配额矩阵"）；缺失时按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent` |
+| **课程路线图** | `course_plan` | 若存在，优先按路线图的下一项推进；用户的指导可覆盖它。缺失时在步骤 6 从 `next_hook` / `part_titles` 补一份 3-8 项的路线图 |
 | **仓库与工具版本** | `repo` / `repo_branch` / `tools` | *继承*它们。基于相同版本写作，不静默升级工具链。（读者若明确想迁移到新版本，这是个信号——可能该新建一个教程了。） |
 
 **学习目标与达成度：** 读取 `goal`（缺失时从 `topic` 与已有内容推断一个，并在步骤 6 补上）。对照 `goal` 评估已有部分的覆盖情况，得出 **已达成 / 基本达成 / 未达成** 的结论及依据——该评估在步骤 5 写入新部分，不单独询问、不打断流程。
@@ -81,7 +83,7 @@
 
 ### 4. 先研究（只研究新内容）
 
-按 writing-core.md"先研究"的纪律与**检索预算**——与生成完全同一套预算，不放宽。**只研究本部分新引入的内容**；已有部分建立的事实直接沿用，不重新查证。新引入的示例代码同样遵循预检中的**版本-特性一致性**检查：特性必须在继承的锁定版本下成立，不确定时查官方 changelog。
+按 writing-core.md"先研究"的纪律与**配额矩阵**——按 `topic_novelty` 取同一套预算，不放宽。**只研究本部分新引入的内容**；已有部分建立的事实直接沿用，不重新查证。**先复用 `metadata.sources` 与 `continuity.fixed_numbers`；跨多部分的新主题可用可选 `research.md` 记录"事实 → 来源 → 用于哪一部分"，避免重复检索。** 新引入的示例代码同样遵循预检中的**版本-特性一致性**检查：特性必须在继承的锁定版本下成立，不确定时查官方 changelog。
 
 ### 5. 确定编号并写入该部分
 
@@ -91,8 +93,9 @@
 
 - 遵循 writing-core.md"教程结构"及其中的**续写变体**：顶部以 `> [!RECALL]` 间隔检索节拍开头（取材于 `covered_concepts`），`## 接下来` **之前**插入 `## 目标达成回顾`。
 - **`## 目标达成回顾` 内容**：陈述原定学习目标（`goal`）、列出已覆盖的内容与尚未覆盖的部分（如有）、给出步骤 2 的达成结论。客观克制，不催促收尾；末尾一句话提示选项：继续延伸新方向，或执行 `/lathe 续写 收尾 <slug>` 完结课程。由用户自行判断。
+- **地基章节：** 若本部分引入新的地基概念，按配额矩阵允许 **0-1 个地基章节**（`new` 后续部分最多 1 个；`adjacent`/`beginner` 也最多 1 个；不计入 4-7，但地基+构建总计 ≤9）。不需要就明确写 0 个。
 - **一个文件，仅此部分。** 不要写 `index.md`，不要碰之前的部分，不要写多个部分。
-- 写完执行 writing-core.md **"交付前自检"**——尤其核对标注配额（具体数字见该清单）。
+- 写完执行 writing-core.md **"交付前自检"**——按配额矩阵核对标注、练习、结构与术语锚定。
 
 ### 6. 更新 `metadata.json`
 
@@ -100,8 +103,8 @@
 
 - 将新部分文件名追加到 `parts` 数组；
 - 将新查阅的来源 URL 追加到 `sources` 数组（去重）；
-- **增量更新 `continuity`**（契约见 `<SKILL_DIR>/references/metadata.md`）：追加本部分新增的 `covered_concepts` 与 `fixed_numbers`、覆盖 `next_hook` 为本部分"接下来"指向的方向、`part_titles` 加入本部分标题、`updated_through` 设为本部分文件名、刷新 `updated_at`；若本部分明确告别了隐喻则置 `metaphor_retired: true`。摘要总长控制在 400 字内。**这一步不能省——省掉它，下次续写就要全文重读。**
-- 补齐步骤 2 中推断出的缺失字段（`goal`、`language`、`style_anchor`、`experience_level`）；
+- **增量更新 `continuity`**（契约见 `<SKILL_DIR>/references/metadata.md`）：追加本部分新增的 `covered_concepts`（**只追加、不合并**）与 `fixed_numbers`、更新 `open_threads`（已提出但未展开的问题/伏笔，最多 10 条）、覆盖 `next_hook` 为本部分"接下来"指向的方向、`part_titles` 加入本部分标题、`updated_through` 设为本部分文件名、刷新 `updated_at`；若本部分明确告别了隐喻则置 `metaphor_retired: true`。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**，分字段上限见 `metadata.md`。**这一步不能省——省掉它，下次续写就要全文重读。**
+- 补齐步骤 2 中推断出的缺失字段（`goal`、`language`、`style_anchor`、`experience_level`、`topic_novelty`）；缺 `course_plan` 时从 `next_hook` / `part_titles` 补一份 3-8 项路线图；用户重新定向时同步更新 `course_plan`；
 - 用户提供或确认了本地项目路径时更新 `local_project_path`；
 - `model` 更新为*你*运行的模型（如 `QoderWork`）；`lathe_version` 更新为当前技能版本；
 - `status` 设为 `unverified`（见 SKILL.md"status 状态机"）——若原状态为 `completed`，此写入即撤销完结，课程重新开放；
@@ -141,7 +144,7 @@
    - 末尾说明课程已完结；未来想继续精进时直接续写即可，课程会自动重新开放。
    - 总结部分**不写** `## 检查点`（无可执行新内容），用一段"回顾自检"代替：列出 3-5 个贯穿全课程的关键问题供读者自测。也不写 `## 你将构建什么`。
    - 同样执行 writing-core.md"交付前自检"（结构按收尾变体核对）。
-4. **更新 metadata**：新部分加入 `parts`；`status` 设为 `completed`；更新 `model`、`lathe_version`；`continuity` 照常增量更新（`next_hook` 写明课程已完结、可随时续写重新开放）；`goal` 等缺失字段补上。
+4. **更新 metadata**：新部分加入 `parts`；`status` 设为 `completed`；更新 `model`、`lathe_version`；`continuity` 照常增量更新（`next_hook` 写明课程已完结、可随时续写重新开放；`open_threads` 清空或标注已解决）；`goal`、`topic_novelty` 等缺失字段补上；`course_plan` 保留为已走路线，不删除。
 5. **告诉用户**课程已完结——总结部分的路径、`status` 已标记 `completed`；随时可用 `/lathe 续写 <slug>` 重新开放，或用 `/lathe 验证 <slug>` 确认最终可用性。
 
 > **面试文档**：收尾部分**不产出面试分段**，也**不写入**面试文档——总结部分不是教学部分（它是全课程回顾 + 知识图谱 + 目标对照，不含新要点，见 `interview.md` 的「教学部分」定义）。即使用户写 `/lathe 续写 收尾 <slug> 面试`，同样不写。

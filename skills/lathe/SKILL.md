@@ -1,6 +1,6 @@
 ---
 name: lathe
-version: 0.5.3
+version: 0.5.3.1
 description: 按需生成、续写、复习、验证、提问动手实践型技术教程。当用户说 /lathe 并附带主题时使用，如 "/lathe 用 Zig 构建数字合成器"；也处理续写(extend)、收尾完结(finish)、复习(review)、验证(verify)、提问(ask)、打标签(tag)、创建语气(voice)、扫描登记(scan)和列出教程(list)等所有教程相关操作。支持中文和英文关键词。
 ---
 
@@ -65,8 +65,8 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 | 文件 | 内容 | 何时读取 |
 |------|------|----------|
-| [references/writing-core.md](references/writing-core.md) | 教程结构、标注类型与配额、不变量、研究纪律、预检、写法细节、交付前自检 | **仅写作型操作**：生成、续写、收尾、复习、面试文档（面试文档**只用**其中的检索预算与「有据可依或标记」不变量） |
-| [references/metadata.md](references/metadata.md) | `metadata.json` 完整结构、`continuity` 摘要规范、自愈协议 | 写 `continuity`、或遇到 metadata 缺失/损坏需自愈时；**生成时字段速查表已足够，不读** |
+| [references/writing-core.md](references/writing-core.md) | 教程结构、配额矩阵、标注类型与配额、不变量、研究纪律、预检、写法细节、交付前自检 | **仅写作型操作**：生成、续写、收尾、复习、面试文档（面试文档**只用**其中的配额矩阵检索预算与「有据可依或标记」不变量） |
+| [references/metadata.md](references/metadata.md) | `metadata.json` 完整结构、`continuity` 摘要规范、`course_plan`、自愈协议 | 写 `continuity` / `course_plan`、或遇到 metadata 缺失/损坏需自愈时；**生成时字段速查表已足够，不读** |
 | [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者表与场景侧重表 | **仅当需要理解某锚点的具体写作手法时**；只选 id 用下方「风格主锚点速查」表，不读本文件 |
 
 **反向清单——明确不要读取**（读多了会挤占上下文并拖慢执行）：
@@ -163,9 +163,9 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 每个教程目录下有一个 `metadata.json` 索引文件。字段一览（**完整结构、字段语义与自愈协议见 [references/metadata.md](references/metadata.md)**）：
 
-`_warning`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
+`_warning`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
 
-**读取几个已知字段时直接读 JSON 即可，无需加载 metadata.md。** 遇到以下情况才读：新建 metadata、写 `continuity` 摘要、或文件缺失/损坏需要自愈。
+**读取几个已知字段时直接读 JSON 即可，无需加载 metadata.md。** 遇到以下情况才读：新建 metadata、写 `continuity` / `course_plan`、或文件缺失/损坏需要自愈。
 
 **任何字段缺失都必须可降级运行**——按 metadata.md 的规则推断，并在本次写回时补上，绝不因缺字段中止操作。
 
@@ -190,4 +190,4 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 ## 版本
 
-**技能版本：v0.5.3**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）
+**技能版本：v0.5.3.1**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）

@@ -7,7 +7,7 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 
 为教程生成「面试要点」文档：**每个 slug 一个 Markdown 文件**，按**教学部分（Part）分章**，每条要点给出「一句话回答 → 展开 → 追问点 → 我的项目里」的解答，供面试前突击复习。
 
-**先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md` 的**检索预算数值**（延伸研究用）与「有据可依或标记」不变量；**不需要**其中的教程结构、标注配额与交付前自检——面试文档有独立结构，见下方。
+**先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md` 的**配额矩阵中的检索预算**（延伸研究用）与「有据可依或标记」不变量；**不需要**其中的教程结构、标注配额与交付前自检——面试文档有独立结构，见下方。
 
 **本文件是「教学部分」定义的单一事实源**——`extend.md` 等文件一律**引用**，不复述。
 
@@ -122,7 +122,7 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 ```
 0. 解析教程位置；metadata.json 缺失/损坏 → 先走 metadata.md「metadata.json 自愈」。
 1. 读 metadata：title / goal / tools / repo / local_project_path / language /
-   parts / continuity.part_titles / sources。
+   topic_novelty / parts / continuity.part_titles / sources。
 2. 计算【教学部分】集合 T（见上）。
 3. 解析面试文档路径（三档）。
 4. 【仅当文档不存在】确认存储位置（见「位置确认」）。
@@ -271,7 +271,7 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 ## 延伸研究
 
 - **默认联网研究**，为每个 Part 补出面试常见的追问（【延伸】类）；
-- **预算沿用** `writing-core.md` 的检索预算**数值**（搜索 ≤5 次/Part；全文抓取 ≤2–3 次/Part，无下限）；
+- **预算沿用** `writing-core.md` 的**配额矩阵**——按 `metadata.topic_novelty` 取对应的搜索/抓取预算（缺失时按 `adjacent`），按 Part 计；1 次搜索可带 1-4 条 query，计调用不计 query；抓取下限为无；
 - **不重复教程已做的研究**：教程 Part 的 `## 来源` 与 `metadata.sources` 已建立的事实直接沿用，不重新查证；只研究**新引入的面试追问角度**；
 - **【延伸】要点必须有来源**（`> **延伸来源**：` 行），无法确证时标 `[!UNVERIFIED]`；
 - **【延伸】占比软引导 ≤ 1/3**：它是预习内容，不是主体；超出时在「要点构成」里如实统计；
