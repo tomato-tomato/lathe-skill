@@ -14,6 +14,12 @@
 6. **先研究主题**（见 writing-core.md"先研究"，按 `topic_novelty` 取配额矩阵中的检索预算）——这是确保准确性的最关键步骤。
 7. 静默执行**预检**（见 writing-core.md）。不要让用户审批。
 8. 撰写第一部分（结构见 writing-core.md"教程结构"）。**动笔前先确定 `course_plan`（3-12 项，每项一句话）**，再写 part-01；part-01 完成路线图的第 1 项。`course_plan` 写入 metadata，不是 `index.md`。本部分主知识点控制在 4-7 个；课程计划中超出本部分范围的知识点写进 `course_plan` / `next_hook`，不要压进同一部分，也不要一次写多个部分。按结构写清“本部分结束时的文件状态”和“下一部分起始状态”。若 part-01 修改了现有 API/签名或跨文件契约，按 metadata.md 的字段规范写入 `changed_interfaces`；没有变化时写空数组。
+
+   **若用户在主提示词里直接列出了知识点（0.5.5）：** 不要重复提问，直接按 writing-core.md「配额来源与优先级」处理——
+   ① **归一化**（每条一个可命名的产出、打 `主知识点/前置/可合并` 标签、保留原文编号）；
+   ② 按可用容量（7 − 承接项）决定 part-01 讲哪几条；
+   ③ **装不下的写进顶层 `knowledge_backlog`**（≤14 条，含 `id`/`text`/`from`/`plan_ref`/`priority`），不要只写 `next_hook`；
+   ④ 在正文里留延后提醒（开头进度提示一句「本部分覆盖清单第 a–b 条，剩余 k 条已顺延」+ `**本部分不覆盖：**` 点名）。
 9. 执行 writing-core.md **"交付前自检"**——尤其核对六项讲透、代码完整性与知识点数量；若本部分有接口变更，核对 `changed_interfaces` 与 part 内的改动面表是否一致。自检按“两轮”流程，不反复全文通读。若正文（不含代码/来源）超过约 10,000 中文字符，或单个 `runnable` 超过约 100-120 行，优先拆部分/拆代码块，不压缩解释。
 10. **存储教程**（见下方"写完之后"）。
 11. **【条件步骤】同步面试文档** —— **仅当本次触发含独立的 `面试` / `interview` token 时**：在教程（`part-01.md` + `metadata.json`）**落盘完成之后**，按 `<SKILL_DIR>/references/interview.md` 为该课程生成 **Part 1 的面试分段**（含文档创建与头部三表）。**未含该 token 时跳过本步**——本步骤不影响上方 1-10 步的任何规则。
@@ -114,13 +120,14 @@
 | `topic_novelty` | 分组提问第 4 项 → `new` / `adjacent` / `familiar`；驱动配额矩阵 |
 | `course_plan` | 3-12 项课程路线图：每项 `{part, title, goal, prerequisites}`；part-01 完成第 1 项；写入 metadata，不是 `index.md` |
 | `changed_interfaces` | 跨部分接口变更清单：每项 `{file, symbol, from, to, call_sites, part}`；按符号记录，最多 8 条；无变化写 `[]`。详细规则见 `metadata.md` |
+| `knowledge_backlog` | 用户列出但 part-01 没讲的知识点队列：每项 `{id, text, from, plan_ref, priority}`；≤14 条、每条 ≤60 字；没有写 `[]`（0.5.5 新增，详见 `metadata.md`） |
 | `style_anchor` | 协议第 5 步选定的主锚点 id |
 | `repo` / `repo_branch` | 读者确认的仓库与分支，独立教程则为空 |
 | `local_project_path` | 生成时通常为空，由续写操作填写 |
 | `tools` | 与读者锁定的每个工具链版本一条 |
 | `sources` | 研究期间查阅的 URL，无网络访问则为空 |
 | `voice` / `model` | 使用的 voice 名称 / 你运行的模型（如 `QoderWork`） |
-| `continuity` | **必须初始化**——`controlling_example`、`fixed_numbers`、`metaphor`（无则空串）、`metaphor_retired: false`、`covered_concepts`（本部分讲透的概念，只追加不合并）、`open_threads`（已提出但未展开的问题/伏笔，最多 10 条，每条 ≤80 字）、`next_hook`（`## 接下来` 指向的方向）、`part_titles`（`{"part-01.md": "<一级标题>"}`）、`updated_through: "part-01.md"`、`updated_at`。摘要总量 1200 字软 / 2000 字硬是**索引预算**，不是正文预算；超出时归档，不压缩课程正文。分字段上限见 `metadata.md`。这一步让后续续写无需重读全部历史部分 |
+| `continuity` | **必须初始化**——`controlling_example`、`fixed_numbers`、`metaphor`（无则空串）、`metaphor_retired: false`、`covered_concepts`（本部分讲透的概念，只追加不合并）、`open_threads`（已提出但未展开的问题/伏笔，最多 10 条，每条 ≤80 字）、`exercise_carry`（本部分练习的承接分流结果，见 `metadata.md`；无则三个数组都空）、`next_hook`（`## 接下来` 指向的方向）、`part_titles`（`{"part-01.md": "<一级标题>"}`）、`updated_through: "part-01.md"`、`updated_at`。摘要总量 1200 字软 / 2000 字硬是**索引预算**，不是正文预算；超出时归档，不压缩课程正文。分字段上限见 `metadata.md`。这一步让后续续写无需重读全部历史部分 |
 
 骨架（字段含义与自愈协议见 `metadata.md`）：
 
@@ -144,6 +151,7 @@
     {"part": 1, "title": "<部分标题>", "goal": "<该部分的一句话目标>", "prerequisites": ["<前置概念/工具>"]}
   ],
   "changed_interfaces": [],
+  "knowledge_backlog": [],
   "style_anchor": "<主锚点 id>",
   "repo": "<远程 URL 或空>",
   "repo_branch": "<分支或空>",
@@ -159,6 +167,7 @@
     "metaphor_retired": false,
     "covered_concepts": ["<本部分讲透的概念>"],
     "open_threads": ["<已提出但未展开的问题/伏笔>"],
+    "exercise_carry": {"integrated": [], "chapter": [], "deferred": []},
     "next_hook": "<本部分 ## 接下来 指向的方向>",
     "part_titles": {"part-01.md": "<一级标题>"},
     "updated_at": "<ISO 8601 时间戳>",

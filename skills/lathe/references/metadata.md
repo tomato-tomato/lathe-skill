@@ -49,6 +49,15 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
       "part": "part-NN.md"
     }
   ],
+  "knowledge_backlog": [
+    {
+      "id": "<原文编号，如 3a>",
+      "text": "<归一化后的知识点，≤60 字>",
+      "from": "<来源，如 user-list-2026-10-23>",
+      "plan_ref": 3,
+      "priority": "core"
+    }
+  ],
   "style_anchor": "<主锚点作者 id，如 nystrom>",
   "repo": "<远程 URL 或空>",
   "repo_branch": "<分支或空>",
@@ -64,6 +73,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
     "metaphor_retired": false,
     "covered_concepts": ["<已讲透的概念1>", "<概念2>"],
     "open_threads": ["<已提出但未展开的问题/伏笔>"],
+    "exercise_carry": {"integrated": [], "chapter": [], "deferred": []},
     "next_hook": "<最后一个部分 ## 接下来 指向的方向，一到两句>",
     "part_titles": {"part-01.md": "<一级标题>"},
     "updated_at": "<ISO 8601 时间戳>",
@@ -90,6 +100,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `topic_novelty` | 生成时确认（可按 `experience_level` 推断） | 三档枚举，驱动配额矩阵（检索预算、地基章节、标注、概念锚定）。**续写读取，不重新询问**；缺失时按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent` |
 | `course_plan` | 生成时初始化；续写时维护 | 3-12 项课程路线图，每项 `{part, title, goal, prerequisites}`。part-01 完成第 1 项；续写优先按下一项推进，用户指导可覆盖。**它是 metadata 字段，不是 `index.md`** |
 | `changed_interfaces` | 生成时初始化/写入；续写时维护 | 跨部分活跃接口变更清单；按符号记录，最多 8 条；字段 `file` / `symbol` / `from` / `to` / `call_sites` / `part`；超出或同符号被替代时归档到 `research.md`。无变化时为空数组 |
+| `knowledge_backlog` | 生成时初始化；续写时维护 | **用户列出但还没写进任何部分的知识点队列**（0.5.5 新增）。每项 `{id, text, from, plan_ref, priority}`；**最多 14 条**（= 2 个 Part 的量）、每条 `text` ≤60 字；`plan_ref` 指向 `course_plan` 的第几项（无归属写 `null`）；`priority` 取 `core`（教程承诺）或 `self-study`。先进先出，讲完即删；触到上限时走「积压三选一」（见 writing-core.md）。无内容写 `[]` |
 | `style_anchor` | 生成时选定 | 风格标杆主锚点 id。续写沿用，避免重复加载 style-benchmarks.md |
 | `continuity` | 续写/收尾每次更新 | **续写连续性摘要**，见下方专节 |
 | `local_project_path` | 续写时填写 | 已有值时续写只做确认，不从零询问 |
@@ -123,12 +134,15 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `metaphor` / `metaphor_retired` | 控制性隐喻及是否已明确告别。已告别则续写不再重启该隐喻 |
 | `covered_concepts` | 已讲透的概念清单——续写据此避免重复教学，也是 `[!RECALL]` 的取材池。**只追加、不合并、不删除**，每项 ≤40 字 |
 | `open_threads` | 已提出但尚未展开的问题/伏笔（最多 10 条，每条 ≤80 字）——续写优先回收；已解决/溢出时移到 `research.md` 的 `## Open Threads Archive`，不删除 |
+| `exercise_carry` | 本部分练习的承接分流结果（0.5.5 新增）：`{integrated: [], chapter: [], deferred: []}`，各 ≤3 条、每条 ≤40 字。`integrated` = 已融进某条知识点；`chapter` = 已进承接章节；`deferred` = 顺延（同时进 `knowledge_backlog`）。续写读它决定下一部分怎么接；讲透后从对应数组移除并追加进 `covered_concepts` |
 | `next_hook` | 最后一部分"接下来"指向的方向——这就是下次续写的默认任务（≤200 字） |
 | `part_titles` | 文件名 → 一级标题映射。让 list、复习、收尾无需打开文件即可获得标题 |
 | `updated_through` | 摘要覆盖到哪个部分——新鲜度判定依据 |
 | `updated_at` | 最后一次写回 continuity 的时间；也用于 part mtime 的手工编辑检测。必须在所有 part 写入之后刷新；verify 只改状态横幅时也会刷新，正文修改时不刷新 |
 
-**写入契约：** 每次写入新部分后**增量更新**——追加本部分新增的概念与数字、更新 `open_threads`、覆盖 `next_hook`、更新 `part_titles`、`updated_through`、`updated_at`。不要重写已有条目（除非确实变更）。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；分字段上限：`controlling_example` ≤200 字、`next_hook` ≤200 字、`covered_concepts` 每项 ≤40 字、`fixed_numbers` 每个值 ≤40 字、`open_threads` 每条 ≤80 字。**宁可多存 200 字，也不要让下次续写重读全部部分。** 若 `covered_concepts` 本身已接近硬上限，优先把不再被 `[!RECALL]` / 续写引用的旧概念归档到可选 `research.md`，而不是删除或合并它们。它是索引，不是缩写版教程。
+**写入契约：** 每次写入新部分后**增量更新**——追加本部分新增的概念与数字、更新 `open_threads`、**覆盖 `exercise_carry` 为本部分练习的分流结果**、覆盖 `next_hook`、更新 `part_titles`、`updated_through`、`updated_at`。不要重写已有条目（除非确实变更）。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；分字段上限：`controlling_example` ≤200 字、`next_hook` ≤200 字、`covered_concepts` 每项 ≤40 字、`fixed_numbers` 每个值 ≤40 字、`open_threads` 每条 ≤80 字、`exercise_carry` 各数组 ≤3 条且每条 ≤40 字。**宁可多存 200 字，也不要让下次续写重读全部部分。** 若 `covered_concepts` 本身已接近硬上限，优先把不再被 `[!RECALL]` / 续写引用的旧概念归档到可选 `research.md`，而不是删除或合并它们。它是索引，不是缩写版教程。
+
+**`knowledge_backlog` 与 `continuity` 的分工：** `continuity` 是**已发生事实的摘要**（讲透了什么、留了什么伏笔），受 2000 字硬上限约束；`knowledge_backlog` 是**尚未发生事项的队列**（还没讲的条目），放顶层、不受 `continuity` 预算约束。**不要把清单塞进 `continuity`**——12 条清单约 500 字，会直接把索引挤爆。
 
 `open_threads` 超过 10 条，或某个线程已经解决/不再需要跟进时，移动到 `research.md` 的 `## Open Threads Archive`；归档条目写清楚：问题、提出部分、状态（resolved / deferred / superseded）、解决部分（如有）、备注/来源。**归档不是删除**；续写/复习/收尾在需要时可读取相关小节。
 
@@ -148,7 +162,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 
 ### research.md（可选归档文件）
 
-当 `changed_interfaces` 超出活跃上限、同一符号被替代，或 `open_threads` 已解决/溢出时，在教程目录创建或追加 `research.md`，使用两个固定小节：
+当 `changed_interfaces` 超出活跃上限、同一符号被替代、`open_threads` 已解决/溢出，或有知识点被降级为自学时，在教程目录创建或追加 `research.md`，使用三个固定小节：
 
 ```markdown
 ## Changed Interfaces Archive
@@ -167,7 +181,13 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 - 解决于：`part-NN`（如已解决）
 - 问题：<原问题>
 - 备注/来源：<可选>
+
+## Self-study Backlog
+
+- <知识点>（来自 <part-NN> 的用户清单，<日期> 降级）
 ```
+
+**`## Self-study Backlog` 的语义（0.5.5 新增）：** 积压触到上限（14 条）后，被降级的条目放这里。**教程不承诺讲它们**，但内容留档；用户想捡回来时说「把自学清单里的 X、Y 讲掉」即可重新入队。它不是 `knowledge_backlog` 的副本——同一条只能出现在一边。
 
 归档文件不是必需的；没有需要归档的内容时不要创建。`research.md` 也不替代 `metadata.json` 的活跃清单。
 
@@ -199,8 +219,9 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
    - `experience_level` → 从正文类比深度推断；`topic_novelty` → 按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent`；`style_anchor` → 从写作节奏推断；
    - `course_plan` → 从 `parts`、各部分一级标题与"接下来"提炼 3-12 项；无法提炼时留空数组；
    - `changed_interfaces` → 空数组；旧教程的接口变更无法可靠推断，不强行回填；
-   - `_needs_backfill` → 记录 `changed_interfaces`、`open_threads_archive` 等无法可靠推断的字段；用户补上后从数组移除；
-   - `continuity` → 按上方字段语义从正文提炼（含 `open_threads`，从各部分"接下来"的未决问题提取；归档内容无法可靠推断，留空）；
+   - `knowledge_backlog` → **空数组**（未讲的知识点无法从正文可靠推断；若某部分「本部分不覆盖」里点名了顺延条目，可作为线索列出并写入 `_needs_backfill`）；
+   - `_needs_backfill` → 记录 `changed_interfaces`、`knowledge_backlog`、`open_threads_archive` 等无法可靠推断的字段；用户补上后从数组移除；
+   - `continuity` → 按上方字段语义从正文提炼（含 `open_threads`，从各部分"接下来"的未决问题提取；`exercise_carry` 从最后一部分的「练习承接」行推断，推不出则三个数组都空；归档内容无法可靠推断，留空）；
    - `voice` → 默认 `plainspoken`（正文不可判定）；`status` → `unverified`；
    - `lathe_version` → 当前技能版本；
    - `repo`、`local_project_path` → 正文有线索则填，否则留空。

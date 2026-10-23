@@ -1,6 +1,6 @@
 ---
 name: lathe
-version: 0.5.4
+version: 0.5.5
 description: 按需生成、续写、复习、验证、提问动手实践型技术教程。当用户说 /lathe 并附带主题时使用，如 "/lathe 用 Zig 构建数字合成器"；也处理续写(extend)、收尾完结(finish)、复习(review)、验证(verify)、提问(ask)、打标签(tag)、创建语气(voice)、扫描登记(scan)和列出教程(list)等所有教程相关操作。支持中文和英文关键词。
 ---
 
@@ -163,7 +163,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 每个教程目录下有一个 `metadata.json` 索引文件。字段一览（**完整结构、字段语义与自愈协议见 [references/metadata.md](references/metadata.md)**）：
 
-`_warning`、`_needs_backfill`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
+`_warning`、`_needs_backfill`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`knowledge_backlog`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
 
 **读取几个已知字段时直接读 JSON 即可，无需加载 metadata.md。** 遇到以下情况才读：新建 metadata、写 `continuity` / `course_plan`、或文件缺失/损坏需要自愈。
 
@@ -216,4 +216,4 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 ## 版本
 
-**技能版本：v0.5.4**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）
+**技能版本：v0.5.5**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）
