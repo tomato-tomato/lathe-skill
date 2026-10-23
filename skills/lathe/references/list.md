@@ -12,6 +12,8 @@
 
 2. **读取每个教程的 `metadata.json`**，如存在则同时读取 `verify-result.json`。
 
+   > **内容变更检测：** 若某 part 在 `verify-result.json` 中为 `passed`，但该 part 文件的修改时间晚于 `checked_at`，在列表中标记为 **“内容已变更，需重新验证”**，不要继续显示 `passed`。只取文件 mtime，不读正文；`-review` 复习材料不参与；“增量复用跳过”（`skipped_reuse`）同样按此判断。`checked_at` 缺失时跳过本检测。
+
    > **成本约束（重要）：本操作绝不读取 `part-NN.md` 的全文。** 一个多课程目录的正文动辄数十万字符，而列表只需要每个部分的一级标题。按以下优先级取标题：
    > 1. **`metadata.json` 的 `continuity.part_titles`** —— 已有映射则直接用，零文件读取；
    > 2. 映射缺失或不完整时，用 shell **只取标题行**：`grep -m1 '^# ' <文件>`（或 `head -n 1`），单次可对整个目录批量执行：`grep -m1 -H '^# ' <目录>/part-*.md`；
@@ -35,7 +37,7 @@
    ```
 
    - 部分列表来自 `metadata.json` 的 `parts` 数组，各部分标题按第 2 步的取标题优先级获得。文件名含 `-review` 后缀的在标题后标注 *（复习）*。
-   - 若验证结果含逐部分明细（`parts` 数组），在对应部分后标注 `✅ passed` / `❌ failed` / `⏭️ not_run`（`-review` 复习材料不参与验证，无标注）。
+   - 若验证结果含逐部分明细（`parts` 数组），在对应部分后标注 `✅ passed` / `❌ failed` / `⏭️ skipped` / `⏭️ not_run`（`-review` 复习材料不参与验证，无标注）。若该部分为 `passed` 但内容已变更（part mtime 晚于 `checked_at`），改标 `⚠️ 内容已变更，需重新验证`。
    - `status` 为 `completed` 的课程，在状态列显示 `⭐ completed（已完结）`。
    - **验证中断检测：** `verify-result.json` 的 `status` 为 `verifying` 且 `checked_at` 超过 **6 小时**前，说明上次验证中途中断。标注为 `⚠️ 验证可能中断（停留于 <checked_at>）` 并提示重新运行 `/lathe 验证 <slug>` 即可复位（增量复用会从断点继续）。
 6. **metadata 缺失的教程**单独列为一组，逐条标注 *⚠️ metadata 缺失*（附目录位置与发现的 part 文件数），并提示：运行 `/lathe 标签 <slug>` 或任一写入型操作可按 `<SKILL_DIR>/references/metadata.md`"metadata.json 自愈"重建索引。
@@ -56,7 +58,7 @@
 2. **展示详细状态**：
    - 标题、主题、编程语言、创建时间、正文语言、voice、模型、所在目录；
    - 学习目标（`goal`）、读者水平（`experience_level`）、风格锚点（`style_anchor`）、生成版本（`lathe_version`）——字段存在时展示，缺失则省略（不推断、不写入）；
-   - `parts` 列表（逐个文件名，附各部分的一级标题和逐部分验证结果）；
+   - `parts` 列表（逐个文件名，附各部分的一级标题和逐部分验证结果；逐部分状态按无参数分支第 2 步的“内容变更检测”规则展示）；
    - 标签、来源数量；
    - 仓库/分支/本地项目路径/锁定工具版本（如有）；
    - 验证结果：状态、时间，若失败则给出失败的部分、步骤和错误信息；若为陈旧的 `verifying` 按无参数分支第 5 步标注中断；

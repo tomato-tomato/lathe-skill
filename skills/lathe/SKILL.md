@@ -176,6 +176,31 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 - `completed` → 收尾完结（`/lathe 续写 收尾 <slug>`）后写入，表示课程已达成学习目标并体面结束；
 - **`completed` 可被撤销：** 用户对已完结课程再次续写（写入任何新的常规部分）时，`status` 重置为 `unverified`——继续学习意味着课程重新开放。**复习不改变 status**。
 
+## 验证状态横幅（part 顶部）
+
+每个 `part-NN.md` 可以在 H1 之后、正文之前带一个验证状态横幅，由 generate / extend / verify 维护。它不是教程正文，不计入结构或知识点配额；读者可见，但不要把它当教学内容。
+
+固定标记与未验证态模板：
+
+```markdown
+<!-- lathe:verify-status:start -->
+> [!WARNING]
+> 本部分尚未通过端到端验证。生成于 <YYYY-MM-DD>；运行 `/lathe 验证 <slug>` 查看结果。
+<!-- lathe:verify-status:end -->
+```
+
+状态规则：
+
+- **未验证**（generate/extend 写入）：使用上面的 WARNING。
+- **失败**：WARNING，写“验证失败：第 N 个可执行步骤（见 `verify-result.json`）”。
+- **跳过**：`parts` 中状态为 `skipped` 时写 NOTE，写“验证跳过：<原因>”；全局 `skipped` 且没有 `parts` 时不改横幅，保留未验证警告。
+- **通过**：移除整个标记块，不写“已验证”正面横幅。
+- `completed` 不特殊处理；未验证/失败/跳过仍显示对应横幅。
+- 旧 part 没有横幅：verify 在失败/跳过时可以插入；通过时不添加。
+- 增量复用跳过（`skipped_reuse`）的 part 不修改横幅。
+- **写入顺序：** verify 必须先更新横幅，再写 `verify-result.json` 的 `checked_at`；否则 part 的 mtime 会晚于 `checked_at`，下次增量复用会误判为“内容已变更”。
+- **写入边界：** verify 只能替换/移除 `lathe:verify-status` 标记块，不能改其他正文；generate/extend 只插入未验证态，不写通过/失败态。
+
 ## 教程语言
 
 教程**正文语言**与触发语言解耦：
