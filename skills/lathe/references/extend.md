@@ -31,10 +31,10 @@
 
 审计通过后，只读这些即可动笔：
 1. `metadata.json` 全文（含 `continuity` 摘要）；
-2. **最后一个常规部分的全文**——你要接着它写，需要它的语感、代码末态和"接下来"原文；
+2. **最后一个常规部分的全文**——你要接着它写，需要它的语感、代码末态和"接下来"原文；**同时读取它的 `**下一部分起始状态：**` 和 `**本部分不覆盖：**`，作为本部分的起点契约**；
 3. 按需：若本次要延伸的主题与某个较早部分紧密相关，**只读那一个部分**。
 
-其余历史部分**不要打开**。`continuity` 已经承载了你需要的连续性信息：控制性示例、固定数字、隐喻状态、已覆盖概念、各部分标题。
+其余历史部分**不要打开**。`continuity` 已经承载了你需要的连续性信息：控制性示例、固定数字、隐喻状态、已覆盖概念、各部分标题。**契约优先：如果最后一部分的“下一部分起始状态”与 `continuity.next_hook` 冲突，以正文契约为准，并在步骤 6 更新 `next_hook`。**
 
 **路径 B —— `continuity` 缺失或过期**（旧教程、跨版本、中途手工编辑过）：
 
@@ -50,13 +50,15 @@
 | **控制性隐喻** | `continuity.metaphor` / `metaphor_retired` | 已告别（`true`）则不再重启该隐喻 |
 | **已覆盖概念** | `continuity.covered_concepts` | 不重复教学；也是 `[!RECALL]` 的取材池 |
 | **本次任务方向** | `continuity.next_hook` / `course_plan` | 上一部分"接下来"指向的方向；若 `course_plan` 存在，优先按路线图的下一项推进。除非用户的指导重新定向，否则这就是你的任务 |
+| **下一部分契约** | 最后一部分的“下一部分起始状态”/“本部分不覆盖” | 写之前先读；文件/函数/命令/未完成项要与本部分实际起点一致。与 `next_hook` 冲突时以正文契约为准，写回时更新 `next_hook` |
+| **课程路线图漂移** | `course_plan` | 本次应映射到路线图的下一个未完成项；用户指导导致偏离时，更新 `course_plan` 并在报告中说明偏离原因和新的下一项，不要静默跳项 |
 | **voice** | `voice` | 沿用，不重新选择、不漂移（加载规则见 writing-core.md） |
 | **正文语言** | `language` | 保持同一语言；缺失时按已有部分推断并在步骤 6 补上 |
 | **风格主锚点** | `style_anchor` | 沿用，**不读取 style-benchmarks.md**；缺失时按已有部分节奏推断并补上 |
 | **读者水平** | `experience_level` | 决定概念锚定的类比深度（见 writing-core.md"概念锚定"）；缺失时按已有部分推断并补上 |
 | **主题新颖度** | `topic_novelty` | 决定本次的检索预算、地基章节、标注与概念锚定配额（见 writing-core.md"配额矩阵"）；缺失时按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent` |
 | **课程路线图** | `course_plan` | 若存在，优先按路线图的下一项推进；用户的指导可覆盖它。缺失时在步骤 6 从 `next_hook` / `part_titles` 补一份 3-12 项的路线图 |
-| **接口变更** | `changed_interfaces` | 写之前先读活跃条目；本部分若涉及已归档接口，读 `research.md` 的 `## Changed Interfaces Archive`；不要按旧签名续写。缺失时视为空数组 |
+| **接口变更** | `changed_interfaces` | 写之前先读活跃条目；本部分若涉及已归档接口，读 `research.md` 的 `## Changed Interfaces Archive`；不要按旧签名续写。写之前和写完后都对活跃条目的 `from` 旧签名做一次自查：新部分的 `runnable` 代码/伪代码不得出现旧签名；展示旧版本必须用 `fragment` 并标注。缺失时视为空数组 |
 | **仓库与工具版本** | `repo` / `repo_branch` / `tools` | *继承*它们。基于相同版本写作，不静默升级工具链。（读者若明确想迁移到新版本，这是个信号——可能该新建一个教程了。） |
 
 **学习目标与达成度：** 读取 `goal`（缺失时从 `topic` 与已有内容推断一个，并在步骤 6 补上）。对照 `goal` 评估已有部分的覆盖情况，得出 **已达成 / 基本达成 / 未达成** 的结论及依据——该评估在步骤 5 写入新部分，不单独询问、不打断流程。
@@ -95,6 +97,7 @@
 写入 `<part-NN.md>`：
 
 - 在 H1 之后、正文之前插入 SKILL.md 规定的“未验证”状态横幅（`lathe:verify-status` 标记块）；横幅不计入教程结构或知识点配额，`> [!RECALL]` 放在横幅之后。
+- **写前核对起点契约：** 本部分的文件/函数/命令/未完成项必须接上最后一部分的“下一部分起始状态”；如果接不上，先停止并向用户说明，不要静默改路线或重写旧部分。
 - 遵循 writing-core.md"教程结构"及其中的**续写变体**：顶部以 `> [!RECALL]` 间隔检索节拍开头（取材于 `covered_concepts`），`## 接下来` **之前**插入 `## 目标达成回顾`；写清“本部分结束时的文件状态”和“下一部分起始状态”。
 - **本部分主知识点控制在 4-7 个。** 如果 `course_plan` / `next_hook` 指向的内容超过 7 个主知识点，只写 4-7 个，把剩余知识点写进 `course_plan` / `next_hook`，下一次续写再写；不要压缩每个知识点，也不要一次写多个部分。
 - **`## 目标达成回顾` 内容**：陈述原定学习目标（`goal`）、列出已覆盖的内容与尚未覆盖的部分（如有）、给出步骤 2 的达成结论。客观克制，不催促收尾；末尾一句话提示选项：继续延伸新方向，或执行 `/lathe 续写 收尾 <slug>` 完结课程。由用户自行判断。
@@ -110,7 +113,7 @@
 - 将新查阅的来源 URL 追加到 `sources` 数组（去重）；
 - **维护 `changed_interfaces`：** 本部分有 API/签名/跨文件契约变化时，按 `metadata.md` 的字段规范追加条目（`file` / `symbol` / `from` / `to` / `call_sites` / `part`）；同一符号只保留最新一条活跃条目；活跃超过 8 条，或旧条目被替代时，移到 `research.md` 的 `## Changed Interfaces Archive`。没有变化时不改（空数组保持空）。
 - **增量更新 `continuity`**（契约见 `<SKILL_DIR>/references/metadata.md`）：追加本部分新增的 `covered_concepts`（**只追加、不合并**）与 `fixed_numbers`、更新 `open_threads`（已提出但未展开的问题/伏笔，最多 10 条，每条 ≤80 字；已解决/溢出移到 `research.md` 的 `## Open Threads Archive`，不删除）、覆盖 `next_hook` 为本部分"接下来"指向的方向、`part_titles` 加入本部分标题、`updated_through` 设为本部分文件名、刷新 `updated_at`；若本部分明确告别了隐喻则置 `metaphor_retired: true`。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；这是**索引预算**，不是正文预算，超出时归档/压缩索引字段，不压缩课程正文。分字段上限见 `metadata.md`。**这一步不能省——省掉它，下次续写就要全文重读。**
-- 补齐步骤 2 中推断出的缺失字段（`goal`、`language`、`style_anchor`、`experience_level`、`topic_novelty`；缺 `changed_interfaces` 时补空数组）；缺 `course_plan` 时从 `next_hook` / `part_titles` 补一份 3-12 项路线图；用户重新定向时同步更新 `course_plan`；若本次补上了 `_needs_backfill` 中的字段，从数组移除；仍无法补的保留；
+- 补齐步骤 2 中推断出的缺失字段（`goal`、`language`、`style_anchor`、`experience_level`、`topic_novelty`；缺 `changed_interfaces` 时补空数组）；缺 `course_plan` 时从 `next_hook` / `part_titles` 补一份 3-12 项路线图；用户重新定向或路线图漂移时同步更新 `course_plan`，并在报告里说明偏离原因和新的下一项；若本次补上了 `_needs_backfill` 中的字段，从数组移除；仍无法补的保留；
 - 用户提供或确认了本地项目路径时更新 `local_project_path`；
 - `model` 更新为*你*运行的模型（如 `QoderWork`）；`lathe_version` 更新为当前技能版本；
 - `status` 设为 `unverified`（见 SKILL.md"status 状态机"）——若原状态为 `completed`，此写入即撤销完结，课程重新开放；
@@ -133,7 +136,7 @@
 
 ### 8. 告诉用户
 
-已添加哪个部分、如何查看（直接在 QoderWork 中打开 markdown 文件）；验证是可选的，但本部分代码必须完整（`runnable` / `fragment` / `exercise` 标记；不得用 `...` 省略运行必需代码），验证只执行 `runnable` 块和检查点，跳过片段/练习。若原状态为 `completed`，一并告知课程已重新开放。走了路径 B 时顺带说明：已为该教程建立连续性摘要，后续续写会更快。**面试文档有变动时一并播报**（"已同步面试文档：新增「第二部分 · Part 2」"或缺口提示）。然后保持会话以回答后续问题。
+已添加哪个部分、如何查看（直接在 QoderWork 中打开 markdown 文件）；验证是可选的，但本部分代码必须完整（`runnable` / `fragment` / `exercise` 标记；不得用 `...` 省略运行必需代码），验证只执行 `runnable` / `expected_failure` 块和检查点，跳过片段/练习/文本块。若原状态为 `completed`，一并告知课程已重新开放。若更新了 `course_plan`、发现起点契约冲突或路线偏离，在报告里说明原因和新的下一项。走了路径 B 时顺带说明：已为该教程建立连续性摘要，后续续写会更快。**面试文档有变动时一并播报**（"已同步面试文档：新增「第二部分 · Part 2」"或缺口提示）。然后保持会话以回答后续问题。
 
 ## 收尾模式（`/lathe 续写 收尾 <slug>`）
 
