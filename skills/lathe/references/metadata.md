@@ -13,7 +13,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 |------|----------|
 | 新建 metadata（**生成**） | ❌ **不读**——`generate.md`"写完之后"已内联 JSON 骨架与字段表 |
 | 新建 metadata（扫描登记、自愈重建） | ✅ 必读 |
-| 写入 `continuity` 摘要或 `course_plan`（续写、收尾） | ✅ 必读 |
+| 写入 `continuity` 摘要、`course_plan` 或 `changed_interfaces`（续写、收尾） | ✅ 必读 |
 | 只读取几个已知字段（提问、列表、验证、标签） | ❌ 按字段名直接读 JSON 即可 |
 
 ---
@@ -37,6 +37,16 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
   "topic_novelty": "new | adjacent | familiar",
   "course_plan": [
     {"part": 1, "title": "<部分标题>", "goal": "<该部分的一句话目标>", "prerequisites": ["<前置概念/工具>"]}
+  ],
+  "changed_interfaces": [
+    {
+      "file": "<文件路径>",
+      "symbol": "<文件内符号>",
+      "from": "<旧签名/旧契约>",
+      "to": "<新签名/新契约>",
+      "call_sites": ["<需要更新的调用点>"],
+      "part": "part-NN.md"
+    }
   ],
   "style_anchor": "<主锚点作者 id，如 nystrom>",
   "repo": "<远程 URL 或空>",
@@ -77,6 +87,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `experience_level` | 生成时询问 | 三档枚举，驱动"概念锚定"的类比深度（见 writing-core.md）。**续写读取，不重新询问** |
 | `topic_novelty` | 生成时确认（可按 `experience_level` 推断） | 三档枚举，驱动配额矩阵（检索预算、地基章节、标注、概念锚定）。**续写读取，不重新询问**；缺失时按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent` |
 | `course_plan` | 生成时初始化；续写时维护 | 3-8 项课程路线图，每项 `{part, title, goal, prerequisites}`。part-01 完成第 1 项；续写优先按下一项推进，用户指导可覆盖。**它是 metadata 字段，不是 `index.md`** |
+| `changed_interfaces` | 生成时初始化/写入；续写时维护 | 跨部分活跃接口变更清单；按符号记录，最多 8 条；字段 `file` / `symbol` / `from` / `to` / `call_sites` / `part`；超出或同符号被替代时归档到 `research.md`。无变化时为空数组 |
 | `style_anchor` | 生成时选定 | 风格标杆主锚点 id。续写沿用，避免重复加载 style-benchmarks.md |
 | `continuity` | 续写/收尾每次更新 | **续写连续性摘要**，见下方专节 |
 | `local_project_path` | 续写时填写 | 已有值时续写只做确认，不从零询问 |
@@ -106,12 +117,53 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `fixed_numbers` | 已锁定的领域数字（采样率、缓冲区大小、端口、超时等）。续写引用同一数字，不得漂移 |
 | `metaphor` / `metaphor_retired` | 控制性隐喻及是否已明确告别。已告别则续写不再重启该隐喻 |
 | `covered_concepts` | 已讲透的概念清单——续写据此避免重复教学，也是 `[!RECALL]` 的取材池。**只追加、不合并、不删除**，每项 ≤40 字 |
-| `open_threads` | 已提出但尚未展开的问题/伏笔（最多 10 条，每条 ≤40 字）——续写优先回收，收尾时清空或标注已解决 |
+| `open_threads` | 已提出但尚未展开的问题/伏笔（最多 10 条，每条 ≤80 字）——续写优先回收；已解决/溢出时移到 `research.md` 的 `## Open Threads Archive`，不删除 |
 | `next_hook` | 最后一部分"接下来"指向的方向——这就是下次续写的默认任务（≤200 字） |
 | `part_titles` | 文件名 → 一级标题映射。让 list、复习、收尾无需打开文件即可获得标题 |
 | `updated_through` | 摘要覆盖到哪个部分——新鲜度判定依据 |
 
-**写入契约：** 每次写入新部分后**增量更新**——追加本部分新增的概念与数字、更新 `open_threads`、覆盖 `next_hook`、更新 `part_titles`、`updated_through`、`updated_at`。不要重写已有条目（除非确实变更）。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；分字段上限：`controlling_example` ≤200 字、`next_hook` ≤200 字、`covered_concepts` 每项 ≤40 字、`fixed_numbers` 每个值 ≤40 字、`open_threads` 每条 ≤40 字。**宁可多存 200 字，也不要让下次续写重读全部部分。** 若 `covered_concepts` 本身已接近硬上限，优先把不再被 `[!RECALL]` / 续写引用的旧概念归档到可选 `research.md`，而不是删除或合并它们。它是索引，不是缩写版教程。
+**写入契约：** 每次写入新部分后**增量更新**——追加本部分新增的概念与数字、更新 `open_threads`、覆盖 `next_hook`、更新 `part_titles`、`updated_through`、`updated_at`。不要重写已有条目（除非确实变更）。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；分字段上限：`controlling_example` ≤200 字、`next_hook` ≤200 字、`covered_concepts` 每项 ≤40 字、`fixed_numbers` 每个值 ≤40 字、`open_threads` 每条 ≤80 字。**宁可多存 200 字，也不要让下次续写重读全部部分。** 若 `covered_concepts` 本身已接近硬上限，优先把不再被 `[!RECALL]` / 续写引用的旧概念归档到可选 `research.md`，而不是删除或合并它们。它是索引，不是缩写版教程。
+
+`open_threads` 超过 10 条，或某个线程已经解决/不再需要跟进时，移动到 `research.md` 的 `## Open Threads Archive`；归档条目写清楚：问题、提出部分、状态（resolved / deferred / superseded）、解决部分（如有）、备注/来源。**归档不是删除**；续写/复习/收尾在需要时可读取相关小节。
+
+---
+
+## changed_interfaces（跨部分接口变更）
+
+`changed_interfaces` 是跨部分活跃接口变更清单，不是课程正文，也不是 API 文档的替代品。
+
+- **何时写入：** 修改现有公开 API/签名、导出类型、数据库 schema、配置契约，或任何跨文件接口时。
+- **粒度：** 按符号一条；同一文件多个符号就多条。
+- **字段：** `file`、`symbol`、`from`、`to`、`call_sites`、`part`。`from`/`to` 用一行签名或短契约描述；`call_sites` 列出需要跟着改的文件/符号，已确认无需外部改动时写 `[]`，并在 part 的改动面表说明理由。
+- **上限：** 活跃 8 条。超过时，优先归档已解决/被替代的条目；仍有活跃溢出时，归档最早条目，并在 `research.md` 标记 `active (overflow)`；续写/验证涉及该符号时读取归档。
+- **替代关系：** 同一符号只保留最新一条活跃条目；旧条目归档，并注明 `superseded by <part>`。
+- **读取：** 续写写之前读活跃条目；若本部分涉及已归档接口，读 `research.md` 的相关小节。验证把活跃条目当检查表，逐条核对调用点；不做自动签名推断。
+- **无变化：** 写 `[]`。旧教程缺失视为空，不强行回填。
+
+### research.md（可选归档文件）
+
+当 `changed_interfaces` 超出活跃上限、同一符号被替代，或 `open_threads` 已解决/溢出时，在教程目录创建或追加 `research.md`，使用两个固定小节：
+
+```markdown
+## Changed Interfaces Archive
+
+### <symbol>（<part>）
+- 文件：`<file>`
+- 变化：`<from>` → `<to>`
+- 调用点：`<call sites>`
+- 状态：archived / superseded by <part> / active (overflow)
+
+## Open Threads Archive
+
+### <简短标题>
+- 提出于：`part-NN`
+- 状态：resolved / deferred / superseded
+- 解决于：`part-NN`（如已解决）
+- 问题：<原问题>
+- 备注/来源：<可选>
+```
+
+归档文件不是必需的；没有需要归档的内容时不要创建。`research.md` 也不替代 `metadata.json` 的活跃清单。
 
 ---
 
@@ -140,7 +192,8 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
    - `goal` → 从 part-01 的 `## 你将构建什么` 与整体走向提炼一句；
    - `experience_level` → 从正文类比深度推断；`topic_novelty` → 按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent`；`style_anchor` → 从写作节奏推断；
    - `course_plan` → 从 `parts`、各部分一级标题与"接下来"提炼 3-8 项；无法提炼时留空数组；
-   - `continuity` → 按上方字段语义从正文提炼（含 `open_threads`，从各部分"接下来"的未决问题提取）；
+   - `changed_interfaces` → 空数组；旧教程的接口变更无法可靠推断，不强行回填；
+   - `continuity` → 按上方字段语义从正文提炼（含 `open_threads`，从各部分"接下来"的未决问题提取；归档内容无法可靠推断，留空）；
    - `voice` → 默认 `plainspoken`（正文不可判定）；`status` → `unverified`；
    - `lathe_version` → 当前技能版本；
    - `repo`、`local_project_path` → 正文有线索则填，否则留空。

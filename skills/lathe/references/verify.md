@@ -34,6 +34,17 @@
    - **不凭记忆断言特性的引入版本。** 不确定时查阅官方 changelog/release notes 确认。
    - **发现冲突：** 记入冲突清单，进入下方**版本冲突修复流程**；修复完成（或用户拒绝修复）后再开始动态执行。预检能提前拦截大部分版本问题，避免动态执行阶段才发现。
 
+2b. **改动面静态预检（有 `changed_interfaces` 时）。** 读取 `metadata.json` 的活跃 `changed_interfaces`，只对本次待执行部分逐条核对；被增量复用跳过的部分继承上次结果，不重复核对：
+
+   - `call_sites` 中的每个调用点，是否在教程中有对应代码块、插入位置，或明确的“无需改”说明；
+   - 当前部分的 `runnable` 代码块中，是否还出现该条目的 `from` 旧签名/旧契约（出现在正文解释里不算，出现在 `runnable` 块里算）；
+   - 新签名/新契约 `to` 是否至少出现在代码块或改动面表中；
+   - 条目缺少必要字段（file/symbol/from/to/call_sites/part）时，记为 metadata 风险并报告；
+   - 若 `research.md` 的 `## Changed Interfaces Archive` 中有 `active (overflow)` 条目且涉及本次部分，同样按上述规则核对；
+   - `changed_interfaces` 缺失或为空数组时跳过本步。
+
+   **判定：** 调用点既没有代码块/插入位置、也没有“无需改”说明，或旧签名仍出现在 `runnable` 块中，或 `to` 完全找不到，记该部分 `failed`（改动面不完整），并在报告中列出文件/符号/调用点。不要自动推断签名，也不要替读者改代码。
+
 3. **标记为进行中。** 在该教程目录中写入 `verify-result.json`：
    ```json
    {

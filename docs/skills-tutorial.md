@@ -8,7 +8,7 @@ Lathe 是一套面向 LLM 编码助手的**动手实践型教程生成技能体�
 >
 > **v0.5.3.1 的优化：配额矩阵与主题新颖度**——新增 `topic_novelty`（全新/相邻/熟悉）、`course_plan`（课程路线图）和 `continuity.open_threads`；检索预算、地基章节、标注、概念锚定按主题新颖度自适应；continuity 扩到 1200 字软上限 / 2000 字硬上限。新主题会多讲地基和陷阱，熟悉主题保持精简。**旧教程无需迁移**，缺失字段按规则推断并在此后续写时补上。
 >
-> **v0.5.4 的优化：讲透优先**——配额只约束知识点数量，不再限制解释长度、类比句数、标注总数或代码行数；代码块区分 `runnable` / `fragment` / `exercise`，验证只执行 `runnable` 和检查点；交付前自检改为六项讲透 + 代码完整性 + 知识点数量。**旧教程无需迁移**；未标记代码块仍按 `runnable` 处理，旧教程中的片段/`...` 若被验证误判，补 `fragment` 标记即可。
+> **v0.5.4 的优化：讲透优先**——配额只约束知识点数量，不再限制解释长度、类比句数、标注总数或代码行数；代码块区分 `runnable` / `fragment` / `exercise`，验证只执行 `runnable` 和检查点；交付前自检改为六项讲透 + 代码完整性 + 知识点数量。Phase 2A 增加顶层 `changed_interfaces`（跨部分接口变更清单）与 `open_threads` 归档（`research.md`）。**旧教程无需迁移**；未标记代码块仍按 `runnable` 处理，旧教程中的片段/`...` 若被验证误判，补 `fragment` 标记即可。
 
 > 本教程适用于 **QoderWork** 或 **QoderWork CN** 桌面客户端。本仓库中的技能在这两款客户端中使用过；技能采用标准 Agent Skills 布局（SKILL.md + references/ 子目录），也已确认兼容 Reasonix 等支持该标准的终端 Agent（见[常见问题](#常见问题)），其他场景需要注意验证
 
@@ -219,6 +219,7 @@ echo '{"tutorials_base_path": "~/my-tutorials", "tutorial_paths": {}}' > ~/.lath
 │   ├── metadata.json              ← 教程索引（顶部含防误删提醒，请勿删除；误删可自愈重建）
 │   ├── part-01.md                 ← 第一部分
 │   ├── part-02.md                 ← 第二部分（由 /lathe 续写 添加）
+│   ├── research.md                ← 可选归档（接口变更 / 未决问题的历史记录）
 │   ├── verify-result.json         ← 验证结果（由 /lathe 验证 生成）
 │   └── .lathe-verify/             ← 验证工作区（隐藏目录，首次验证后自动创建，可安全删除）
 └── voices/                        ← 自定义语气预设（始终位于默认基础目录）
@@ -307,7 +308,7 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 - **概念锚定：** 重要概念除详细介绍外，还会从你已知的知识体系引申讲解（锚点随你回答的经验水平调整），帮助更快理解
 - **自适应深度：** 生成时会记录主题新颖度（全新 / 相邻 / 熟悉），据此调整检索预算、地基章节和陷阱密度；配额只约束知识点数量，不限制每个知识点的解释长度、类比或代码行数——新主题会多讲地基和陷阱，熟悉主题保持精简，但都不会为配额删掉必要解释
 - **讲透优先：** 每个构建节讲清定义、动机、用法、例子、边界和可观察的验证结果；需要类比、对照或展开时就写，不因篇幅配额删减
-- **代码完整性：** 代码块按 `runnable` / `fragment` / `exercise` 标记；运行必需代码不得用 `...` 省略；修改 API/签名时给出改动面表，并至少有一个集成检查点
+- **代码完整性：** 代码块按 `runnable` / `fragment` / `exercise` 标记；运行必需代码不得用 `...` 省略；修改 API/签名时给出改动面表，并至少有一个集成检查点；跨部分接口变化同步到 `changed_interfaces`
 - **具体数字：** 采样率、缓冲区大小、页面大小等，避免模糊的"很快"/"很大"
 - **内联引用：** 关键事实旁直接附上来源链接
 - **检查点：** 每个部分末尾有可执行的验证命令和预期输出
@@ -358,7 +359,7 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 4. **研究新内容** — 与 `/lathe` 相同的纪律和**按 `topic_novelty` 分级的检索预算**（熟悉 3 / 相邻 5 / 全新 8 次搜索，抓取相应为 1-2 / 3 / 5-6；1 次搜索可带多条 query）；**只研究本部分新引入的内容**，已有部分建立的事实直接沿用，并优先复用 `metadata.sources`
 5. **确定部分编号** — 自动递增（如已有 `part-01.md`，下一个是 `part-02.md`；已有复习材料时在其最大编号后递增）
 6. **写入新部分** — 遵循完整的教程结构，以 `> [!RECALL]` 间隔检索开头；并在 `## 接下来` 前插入 **`## 目标达成回顾`** 小节：陈述原定学习目标、已覆盖/未覆盖内容、达成结论——由你自行判断继续延伸还是收尾完结；写完执行交付前自检
-7. **更新 metadata.json** — 追加新部分到 `parts` 数组，追加新来源，**增量更新 `continuity` 摘要**（下次续写的成本基础，不可省；总量 1200 字软上限 / 2000 字硬上限是索引预算，不是正文预算，`covered_concepts` 只追加不合并，`open_threads` 记录未决问题），同步更新 `course_plan`，`lathe_version` 更新为当前技能版本，`status` 重置为 `unverified`（若课程已完结，此操作自动撤销完结、重新开放）
+7. **更新 metadata.json** — 追加新部分到 `parts` 数组，追加新来源，**增量更新 `continuity` 摘要**（下次续写的成本基础，不可省；总量 1200 字软上限 / 2000 字硬上限是索引预算，不是正文预算，`covered_concepts` 只追加不合并，`open_threads` 每条 ≤80 字，已解决/溢出归档到 `research.md`），同步更新 `course_plan` 与 `changed_interfaces`，`lathe_version` 更新为当前技能版本，`status` 重置为 `unverified`（若课程已完结，此操作自动撤销完结、重新开放）
 8. **报告完成** — 告知你如何查看和验证
 
 ### 目标达成与收尾完结
@@ -554,6 +555,7 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 
 1. **读取元数据** — 获取部分列表和所需工具
 2. **版本一致性静态预检** — 不运行代码，先比对三类版本信息：`metadata.json` 锁定的工具链版本、配置代码块声明的版本（如 `Cargo.toml` 的 `edition`）、示例代码实际使用特性所需的最低版本。发现冲突（如 edition 2024 配 2021 语义的代码）直接进入修复流程，不等到运行才暴露
+2b. **改动面静态预检** — 若 `metadata.changed_interfaces` 非空，只对本次待执行部分逐条核对调用点是否在教程中有代码块、插入位置或“无需改”说明；`runnable` 块中若仍出现旧签名，或调用点未覆盖，记为失败（改动面不完整）。被增量复用跳过的部分继承上次结果。不做自动签名推断
 3. **标记为进行中** — 写入 `verify-result.json`，状态设为 `verifying`
 4. **准备验证工作区** — 位于教程目录下的 `.lathe-verify/`（首次验证时创建并在 `metadata.json` 中记录说明）；工作区已存在时**增量复用**：上次已通过且对应部分未修改的直接跳过，从第一个需要执行的部分（失败/未跑/内容已变更/新增）继续，依赖与编译缓存直接复用；针对仓库的教程（`repo` 非空）在工作区内克隆对应分支
 5. **逐步执行** — 按确定范围安装前置条件、创建文件、粘贴 `runnable` 代码块、运行检查点命令；`fragment` / `exercise` 跳过，不单独粘贴；`runnable` 块中出现 `...` 即视为代码不完整。报错时先归因——版本冲突类错误进入修复流程，其他错误按失败处理
@@ -1039,6 +1041,7 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
     {"part": 2, "title": "Leader 选举：随机超时与活锁", "goal": "实现可用的 Leader 选举", "prerequisites": ["part-01"]},
     {"part": 3, "title": "日志复制与安全性", "goal": "实现日志复制并验证提交规则", "prerequisites": ["part-02"]}
   ],
+  "changed_interfaces": [],
   "style_anchor": "sam-who",
   "repo": "",
   "repo_branch": "",
@@ -1094,6 +1097,7 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 | `experience_level` | 读者经验水平：`beginner` / `familiar` / `experienced`。驱动“概念锚定”的类比深度；**续写读取，不重新询问** |
 | `topic_novelty` | 主题新颖度：`new` / `adjacent` / `familiar`。驱动检索预算、地基章节、标注与概念锚定；**续写读取，不重新询问** |
 | `course_plan` | 课程路线图（3-8 项，每项 `{part, title, goal, prerequisites}`）。生成时初始化、续写时维护；**不是 `index.md`** |
+| `changed_interfaces` | 跨部分活跃接口变更清单。每项 `{file, symbol, from, to, call_sites, part}`；按符号记录，最多 8 条；超出或同符号被替代时归档到 `research.md`；无变化时为空数组 |
 | `style_anchor` | 风格标杆主锚点 id（如 `nystrom`、`sam-who`）。续写沿用，避免重复加载标杆表 |
 | `repo`    | 关联的代码仓库 URL（独立教程为空）                     |
 | `local_project_path` | 本地实战项目路径（由续写操作填写；已有值时续写只做轻确认）              |
@@ -1114,14 +1118,40 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 | `fixed_numbers` | 已锁定的领域数字（采样率、超时、缓冲区大小等）。续写引用同一数字，不得漂移 |
 | `metaphor` / `metaphor_retired` | 控制性隐喻及是否已明确告别。已告别则不再重启 |
 | `covered_concepts` | 已讲透的概念清单——避免重复教学，也是 `[!RECALL]` 的取材池。**只追加、不合并**，每项 ≤40 字 |
-| `open_threads` | 已提出但尚未展开的问题/伏笔（最多 10 条，每条 ≤40 字）。续写优先回收，收尾时清空或标注已解决 |
+| `open_threads` | 已提出但尚未展开的问题/伏笔（最多 10 条，每条 ≤80 字）。续写优先回收；已解决/溢出移到 `research.md` 的 `## Open Threads Archive`，不删除 |
 | `next_hook` | 最后一部分“接下来”指向的方向——下次续写的默认任务（≤200 字） |
 | `part_titles` | 文件名 → 一级标题映射。让列表、复习、收尾无需打开文件即可获得标题 |
 | `updated_through` | 摘要覆盖到哪个部分——**新鲜度判定依据** |
 
-**新鲜度规则：** `updated_through` 等于当前最后一个常规部分 → 摘要可信，续写只读它 + 最后一个部分；落后或缺失 → 全文读取一次并重建。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；分字段上限：`controlling_example` ≤200 字、`next_hook` ≤200 字、`covered_concepts` 每项 ≤40 字、`fixed_numbers` 每个值 ≤40 字、`open_threads` 每条 ≤40 字。**宁可多存 200 字，也不要让下次续写重读全部部分。** 它是索引，不是缩写版教程；**这是索引预算，不是正文预算**，超出时归档/压缩索引字段，不压缩课程正文。
+**新鲜度规则：** `updated_through` 等于当前最后一个常规部分 → 摘要可信，续写只读它 + 最后一个部分；落后或缺失 → 全文读取一次并重建。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；分字段上限：`controlling_example` ≤200 字、`next_hook` ≤200 字、`covered_concepts` 每项 ≤40 字、`fixed_numbers` 每个值 ≤40 字、`open_threads` 每条 ≤80 字。**宁可多存 200 字，也不要让下次续写重读全部部分。** 它是索引，不是缩写版教程；**这是索引预算，不是正文预算**，超出时归档/压缩索引字段，不压缩课程正文。
+
+`open_threads` 超过 10 条或已解决时，移到教程目录下可选 `research.md` 的 `## Open Threads Archive`；归档内容写清问题、提出部分、状态、解决部分（如有）、备注/来源。归档不是删除。
 
 > 手工修改过旧部分内容后，可以直接把 `continuity.updated_through` 改成一个较小的值（或删掉整个 `continuity` 字段），下次续写就会重新全文读取并重建摘要。也可以直接告知 AI “我改过前面的部分”。
+
+### changed_interfaces 与 research.md
+
+`changed_interfaces` 是跨部分活跃接口变更清单，用来防止“某个部分改了签名，后续部分还按旧签名写”。它在 `metadata.json` 顶层，不占 `continuity` 的 1200/2000 索引预算。
+
+```json
+{
+  "changed_interfaces": [
+    {
+      "file": "src/documents/documents.service.ts",
+      "symbol": "DocumentsService.findAll",
+      "from": "findAll(limit: number)",
+      "to": "findAll(query: QueryDocumentsDto)",
+      "call_sites": ["src/documents/documents.controller.ts"],
+      "part": "part-02.md"
+    }
+  ]
+}
+```
+
+- 按符号记录，最多 8 条；`call_sites` 为空表示已确认无需外部改动，并在 part 的改动面表说明理由。
+- 同一符号只保留最新一条活跃条目；旧条目、超出 8 条的条目移到 `research.md` 的 `## Changed Interfaces Archive`；仍有活跃溢出时标记 `active (overflow)`，续写/验证涉及该符号时读取归档。
+- 续写前先读活跃条目；本部分涉及归档接口时读 `research.md` 对应小节；验证把清单当检查表，不做自动签名推断。
+- 旧教程缺失视为空数组，不强行回填。
 
 ### 部分文件（part-NN.md）
 
