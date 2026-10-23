@@ -163,7 +163,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 每个教程目录下有一个 `metadata.json` 索引文件。字段一览（**完整结构、字段语义与自愈协议见 [references/metadata.md](references/metadata.md)**）：
 
-`_warning`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
+`_warning`、`_needs_backfill`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
 
 **读取几个已知字段时直接读 JSON 即可，无需加载 metadata.md。** 遇到以下情况才读：新建 metadata、写 `continuity` / `course_plan`、或文件缺失/损坏需要自愈。
 
@@ -200,6 +200,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 - 增量复用跳过（`skipped_reuse`）的 part 不修改横幅。
 - **写入顺序：** verify 必须先更新横幅，再写 `verify-result.json` 的 `checked_at`；否则 part 的 mtime 会晚于 `checked_at`，下次增量复用会误判为“内容已变更”。
 - **写入边界：** verify 只能替换/移除 `lathe:verify-status` 标记块，不能改其他正文；generate/extend 只插入未验证态，不写通过/失败态。
+- **冲突保护：** 发现多个标记块、嵌套或缺少 `end` 时停止写入该 part，报告冲突；不要猜测替换。
 
 ## 教程语言
 

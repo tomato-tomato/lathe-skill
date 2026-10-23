@@ -12,7 +12,7 @@
 
 2. **读取每个教程的 `metadata.json`**，如存在则同时读取 `verify-result.json`。
 
-   > **内容变更检测：** 若某 part 在 `verify-result.json` 中为 `passed`，但该 part 文件的修改时间晚于 `checked_at`，在列表中标记为 **“内容已变更，需重新验证”**，不要继续显示 `passed`。只取文件 mtime，不读正文；`-review` 复习材料不参与；“增量复用跳过”（`skipped_reuse`）同样按此判断。`checked_at` 缺失时跳过本检测。
+   > **内容变更检测：** 若某 part 在 `verify-result.json` 中为 `passed`，但该 part 文件的修改时间晚于 `checked_at`，在列表中标记为 **“内容已变更，需重新验证”**，不要继续显示 `passed`。只取文件 mtime，不读正文；`-review` 复习材料不参与；“增量复用跳过”（`skipped_reuse`）同样按此判断。`checked_at` 缺失时跳过本检测。若 `verify-result.json` 的 `changed_interfaces_snapshot` 与当前 `metadata.changed_interfaces` 不一致，也标记 **“接口已变更，需重新验证”**。
 
    > **成本约束（重要）：本操作绝不读取 `part-NN.md` 的全文。** 一个多课程目录的正文动辄数十万字符，而列表只需要每个部分的一级标题。按以下优先级取标题：
    > 1. **`metadata.json` 的 `continuity.part_titles`** —— 已有映射则直接用，零文件读取；
@@ -63,6 +63,7 @@
    - 仓库/分支/本地项目路径/锁定工具版本（如有）；
    - 验证结果：状态、时间，若失败则给出失败的部分、步骤和错误信息；若为陈旧的 `verifying` 按无参数分支第 5 步标注中断；
    - `continuity` 存在时，用一行说明连续性摘要的新鲜度（`updated_through` 是否跟上最后一个常规部分）——落后时提醒：下次续写会先重建摘要（一次性成本）。
+   - 展示活跃 `changed_interfaces` 数量、`continuity.open_threads` 数量；教程目录存在 `research.md` 时注明“有归档”（只检查存在性，不读内容）。
 3. **给出下一步建议**：根据状态提示可用操作（如 `unverified` → 提示可 `/lathe 验证 <slug>`；上一部分"接下来"有未决问题 → 提示可 `/lathe 续写 <slug>`；久未学习 → 提示可 `/lathe 复习 <slug>`；目标已达成 → 提示可 `/lathe 续写 收尾 <slug>` 完结；`completed` → 说明已完结，续写可重新开放）。
 
 ## 边界

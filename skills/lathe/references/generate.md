@@ -13,7 +13,7 @@
 5. **选定风格主锚点**：按 `<SKILL_DIR>/SKILL.md`「风格主锚点速查」表匹配主锚点，记下其 id 待写入 `style_anchor`。**只选 id 时不读 `style-benchmarks.md`**；仅当需要理解该锚点的具体写作手法时才读它的「标杆作者」表。
 6. **先研究主题**（见 writing-core.md"先研究"，按 `topic_novelty` 取配额矩阵中的检索预算）——这是确保准确性的最关键步骤。
 7. 静默执行**预检**（见 writing-core.md）。不要让用户审批。
-8. 撰写第一部分（结构见 writing-core.md"教程结构"）。**动笔前先确定 `course_plan`（3-8 项，每项一句话）**，再写 part-01；part-01 完成路线图的第 1 项。`course_plan` 写入 metadata，不是 `index.md`。本部分主知识点控制在 4-7 个；课程计划中超出本部分范围的知识点写进 `course_plan` / `next_hook`，不要压进同一部分，也不要一次写多个部分。若 part-01 修改了现有 API/签名或跨文件契约，按 metadata.md 的字段规范写入 `changed_interfaces`；没有变化时写空数组。
+8. 撰写第一部分（结构见 writing-core.md"教程结构"）。**动笔前先确定 `course_plan`（3-12 项，每项一句话）**，再写 part-01；part-01 完成路线图的第 1 项。`course_plan` 写入 metadata，不是 `index.md`。本部分主知识点控制在 4-7 个；课程计划中超出本部分范围的知识点写进 `course_plan` / `next_hook`，不要压进同一部分，也不要一次写多个部分。按结构写清“本部分结束时的文件状态”和“下一部分起始状态”。若 part-01 修改了现有 API/签名或跨文件契约，按 metadata.md 的字段规范写入 `changed_interfaces`；没有变化时写空数组。
 9. 执行 writing-core.md **"交付前自检"**——尤其核对六项讲透、代码完整性与知识点数量；若本部分有接口变更，核对 `changed_interfaces` 与 part 内的改动面表是否一致。
 10. **存储教程**（见下方"写完之后"）。
 11. **【条件步骤】同步面试文档** —— **仅当本次触发含独立的 `面试` / `interview` token 时**：在教程（`part-01.md` + `metadata.json`）**落盘完成之后**，按 `<SKILL_DIR>/references/interview.md` 为该课程生成 **Part 1 的面试分段**（含文档创建与头部三表）。**未含该 token 时跳过本步**——本步骤不影响上方 1-10 步的任何规则。
@@ -33,7 +33,7 @@
 1. **保存位置（每次生成都问）：** 展示 config 中的默认目录并确认——*"本教程将保存到 `~/others/lathe_tutorials/`（默认目录），要换个位置吗？"* 用户给出新路径则本教程存到那里，否则用默认值。**这一项必须先问出、拿到回答再动笔**——即使在没有选择框 UI 的终端 Agent（如 Reasonix、Claude Code、Codex）里，也要以纯文本明确问出；用户回车/未指定即视为采用默认目录，但不得直接静默跳过。
 2. **教程 slug：** 由主题推导一个 kebab-case 短名称并**展示给用户确认**——*"目录名将是 `todo-cli-rust`，可以吗？"* 这是教程的永久标识和目录名，用户此后靠它调用所有其他操作，所以必须让他知道，不要静默决定。
 3. **经验水平：** *"你在这个领域的经验水平如何——初学者、有一定了解、还是在相关领域有经验？"* 三个回答分别对应 `experience_level` 的 `beginner` / `familiar` / `experienced`，写入 metadata 供后续续写沿用。
-4. **主题新颖度（topic_novelty）：** *"这个主题对你是**全新领域 / 有相邻经验 / 已经熟悉**？"* 三个回答分别对应 `new` / `adjacent` / `familiar`，写入 metadata；它决定检索预算、地基章节、标注与概念锚定的配额。**默认按经验水平推断**：`beginner → new`、`familiar → adjacent`、`experienced → familiar`；用户可改。未作答即用推断值。
+4. **主题新颖度（topic_novelty）：** *"这个主题对你是**全新领域 / 有相邻经验 / 已经熟悉**？"* 三个回答分别对应 `new` / `adjacent` / `familiar`，写入 metadata；它决定检索预算、地基章节、标注与概念锚定的配额。**默认按经验水平推断**：`beginner → new`、`familiar → adjacent`、`experienced → familiar`；用户可改。未作答即用推断值。**无法判断时按更高新颖度处理；用户说不出该主题的一个核心概念时按 `new`，不要按 `familiar` 省预算。**
 5. **语气（voice）：** 列出可选语气供选择——`plainspoken`（默认，平实精确、不虚构人格）、`companion`（陪伴式）、`craftsman`（工匠式），或用户已创建的自定义 voice。**默认 plainspoken 无需读取 `voice.md`**；仅当用户选了 companion/craftsman/自定义时，才按 writing-core.md"voice 的应用"加载对应规范。未作答即用 plainspoken。
 6. **澄清问题（仅在主题确实含糊时加入）：** 语言？规模？嵌入式还是服务端？最多**一个**。
 7. **仓库：** 此教程是否针对特定仓库？如果是，记录远程 URL 和分支。独立教程则跳过。
@@ -102,6 +102,7 @@
 | 字段 | 取值 |
 |------|------|
 | `_warning` | 必须保留（原文照抄 metadata.md 中的文案） |
+| `_needs_backfill` | 生成时写 `[]`；只记录无法可靠推断、需人工补的字段名 |
 | `lathe_version` | 当前技能版本（见 SKILL.md「版本」节） |
 | `slug` / `title` / `topic` | 用户确认的 slug、教程标题、用户原始主题描述 |
 | `created` | 当前时间的 ISO 8601 时间戳 |
@@ -111,7 +112,7 @@
 | `language` | 教程正文语言（见 SKILL.md"教程语言"） |
 | `experience_level` | 分组提问第 3 项 → `beginner` / `familiar` / `experienced` |
 | `topic_novelty` | 分组提问第 4 项 → `new` / `adjacent` / `familiar`；驱动配额矩阵 |
-| `course_plan` | 3-8 项课程路线图：每项 `{part, title, goal, prerequisites}`；part-01 完成第 1 项；写入 metadata，不是 `index.md` |
+| `course_plan` | 3-12 项课程路线图：每项 `{part, title, goal, prerequisites}`；part-01 完成第 1 项；写入 metadata，不是 `index.md` |
 | `changed_interfaces` | 跨部分接口变更清单：每项 `{file, symbol, from, to, call_sites, part}`；按符号记录，最多 8 条；无变化写 `[]`。详细规则见 `metadata.md` |
 | `style_anchor` | 协议第 5 步选定的主锚点 id |
 | `repo` / `repo_branch` | 读者确认的仓库与分支，独立教程则为空 |
@@ -126,6 +127,7 @@
 ```json
 {
   "_warning": "⚠️ 本文件是该教程的索引文件，请勿删除。误删后 lathe 将无法识别此教程；可运行 /lathe 标签 <slug> 或任一写入型操作触发自愈重建。",
+  "_needs_backfill": [],
   "lathe_version": "<当前技能版本>",
   "slug": "<kebab-case 短名称>",
   "title": "<教程标题>",
@@ -165,7 +167,7 @@
 }
 ```
 
-> `course_plan` 的骨架示例只列 1 项；实际填写 **3-8 项**。`verify_workspace` 不在生成时写入——它由 `/lathe 验证` 首次创建 `.lathe-verify/` 工作区时补上。
+> `course_plan` 的骨架示例只列 1 项；实际填写 **3-12 项**。`verify_workspace` 不在生成时写入——它由 `/lathe 验证` 首次创建 `.lathe-verify/` 工作区时补上。
 
 **3. 登记位置（仅当需要时）** —— **若本次保存位置等于 `tutorials_base_path`，跳过本步**（`tutorial_paths` 缺失即等价于"所有教程都在默认基础目录"，见 `<SKILL_DIR>/SKILL.md`"教程存储路径配置"）。仅当保存到**其他目录**时，才更新 `~/.lathe/config.json`，在 `tutorial_paths` 中写入 `"<slug>": "<本次使用的目录>"`（保留已有条目不动）。
 

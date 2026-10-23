@@ -27,7 +27,9 @@
 
 **路径 A —— `continuity` 可信**（存在，且 `updated_through` 等于当前最后一个常规部分）：
 
-只读这些即可动笔：
+**先做手工编辑检测：** 用文件 mtime 扫描所有 part；任何 part 的 mtime 晚于 `continuity.updated_at`，视为手工改动，改走路径 B 重建。**当本次要写的部分编号是 3 的倍数（part-03 / 06 / 09…）时，做一次全读审计**：读取全部常规部分，核对并重建 continuity，不只读最后一部分。若 `changed_interfaces` 非空，读取涉及接口/调用点的旧 part；若 `open_threads` 提到旧 part，读取该 part 的相关小节。
+
+审计通过后，只读这些即可动笔：
 1. `metadata.json` 全文（含 `continuity` 摘要）；
 2. **最后一个常规部分的全文**——你要接着它写，需要它的语感、代码末态和"接下来"原文；
 3. 按需：若本次要延伸的主题与某个较早部分紧密相关，**只读那一个部分**。
@@ -53,7 +55,7 @@
 | **风格主锚点** | `style_anchor` | 沿用，**不读取 style-benchmarks.md**；缺失时按已有部分节奏推断并补上 |
 | **读者水平** | `experience_level` | 决定概念锚定的类比深度（见 writing-core.md"概念锚定"）；缺失时按已有部分推断并补上 |
 | **主题新颖度** | `topic_novelty` | 决定本次的检索预算、地基章节、标注与概念锚定配额（见 writing-core.md"配额矩阵"）；缺失时按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent` |
-| **课程路线图** | `course_plan` | 若存在，优先按路线图的下一项推进；用户的指导可覆盖它。缺失时在步骤 6 从 `next_hook` / `part_titles` 补一份 3-8 项的路线图 |
+| **课程路线图** | `course_plan` | 若存在，优先按路线图的下一项推进；用户的指导可覆盖它。缺失时在步骤 6 从 `next_hook` / `part_titles` 补一份 3-12 项的路线图 |
 | **接口变更** | `changed_interfaces` | 写之前先读活跃条目；本部分若涉及已归档接口，读 `research.md` 的 `## Changed Interfaces Archive`；不要按旧签名续写。缺失时视为空数组 |
 | **仓库与工具版本** | `repo` / `repo_branch` / `tools` | *继承*它们。基于相同版本写作，不静默升级工具链。（读者若明确想迁移到新版本，这是个信号——可能该新建一个教程了。） |
 
@@ -93,7 +95,7 @@
 写入 `<part-NN.md>`：
 
 - 在 H1 之后、正文之前插入 SKILL.md 规定的“未验证”状态横幅（`lathe:verify-status` 标记块）；横幅不计入教程结构或知识点配额，`> [!RECALL]` 放在横幅之后。
-- 遵循 writing-core.md"教程结构"及其中的**续写变体**：顶部以 `> [!RECALL]` 间隔检索节拍开头（取材于 `covered_concepts`），`## 接下来` **之前**插入 `## 目标达成回顾`。
+- 遵循 writing-core.md"教程结构"及其中的**续写变体**：顶部以 `> [!RECALL]` 间隔检索节拍开头（取材于 `covered_concepts`），`## 接下来` **之前**插入 `## 目标达成回顾`；写清“本部分结束时的文件状态”和“下一部分起始状态”。
 - **本部分主知识点控制在 4-7 个。** 如果 `course_plan` / `next_hook` 指向的内容超过 7 个主知识点，只写 4-7 个，把剩余知识点写进 `course_plan` / `next_hook`，下一次续写再写；不要压缩每个知识点，也不要一次写多个部分。
 - **`## 目标达成回顾` 内容**：陈述原定学习目标（`goal`）、列出已覆盖的内容与尚未覆盖的部分（如有）、给出步骤 2 的达成结论。客观克制，不催促收尾；末尾一句话提示选项：继续延伸新方向，或执行 `/lathe 续写 收尾 <slug>` 完结课程。由用户自行判断。
 - **地基章节：** 若本部分引入新的地基概念，按配额矩阵允许 **0-1 个地基章节**（`new` 后续部分最多 1 个；`adjacent`/`beginner` 也最多 1 个；不计入 4-7，但地基+构建总计 ≤9）。不需要就明确写 0 个。
@@ -108,7 +110,7 @@
 - 将新查阅的来源 URL 追加到 `sources` 数组（去重）；
 - **维护 `changed_interfaces`：** 本部分有 API/签名/跨文件契约变化时，按 `metadata.md` 的字段规范追加条目（`file` / `symbol` / `from` / `to` / `call_sites` / `part`）；同一符号只保留最新一条活跃条目；活跃超过 8 条，或旧条目被替代时，移到 `research.md` 的 `## Changed Interfaces Archive`。没有变化时不改（空数组保持空）。
 - **增量更新 `continuity`**（契约见 `<SKILL_DIR>/references/metadata.md`）：追加本部分新增的 `covered_concepts`（**只追加、不合并**）与 `fixed_numbers`、更新 `open_threads`（已提出但未展开的问题/伏笔，最多 10 条，每条 ≤80 字；已解决/溢出移到 `research.md` 的 `## Open Threads Archive`，不删除）、覆盖 `next_hook` 为本部分"接下来"指向的方向、`part_titles` 加入本部分标题、`updated_through` 设为本部分文件名、刷新 `updated_at`；若本部分明确告别了隐喻则置 `metaphor_retired: true`。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；这是**索引预算**，不是正文预算，超出时归档/压缩索引字段，不压缩课程正文。分字段上限见 `metadata.md`。**这一步不能省——省掉它，下次续写就要全文重读。**
-- 补齐步骤 2 中推断出的缺失字段（`goal`、`language`、`style_anchor`、`experience_level`、`topic_novelty`；缺 `changed_interfaces` 时补空数组）；缺 `course_plan` 时从 `next_hook` / `part_titles` 补一份 3-8 项路线图；用户重新定向时同步更新 `course_plan`；
+- 补齐步骤 2 中推断出的缺失字段（`goal`、`language`、`style_anchor`、`experience_level`、`topic_novelty`；缺 `changed_interfaces` 时补空数组）；缺 `course_plan` 时从 `next_hook` / `part_titles` 补一份 3-12 项路线图；用户重新定向时同步更新 `course_plan`；若本次补上了 `_needs_backfill` 中的字段，从数组移除；仍无法补的保留；
 - 用户提供或确认了本地项目路径时更新 `local_project_path`；
 - `model` 更新为*你*运行的模型（如 `QoderWork`）；`lathe_version` 更新为当前技能版本；
 - `status` 设为 `unverified`（见 SKILL.md"status 状态机"）——若原状态为 `completed`，此写入即撤销完结，课程重新开放；
