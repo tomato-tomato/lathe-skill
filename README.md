@@ -16,7 +16,7 @@
 
 **v0.5.3.1 优化**：**配额矩阵 + 主题新颖度分级**——新增 `topic_novelty`、`course_plan`、`continuity.open_threads`；检索预算、地基章节、标注、概念锚定按「全新 / 相邻 / 熟悉」三档自适应；continuity 扩到 1200 字软上限 / 2000 字硬上限，减少长课程重读与漂移；练习、代码块、图表与自检规则同步调整为"教学脚手架优先，装饰性旁白收紧"。
 
-**v0.5.4 优化**：**讲透优先**——配额只约束知识点数量，不再限制解释长度、类比句数、标注总数或代码行数；代码块区分 `runnable` / `fragment` / `exercise`，验证只执行 `runnable` 和检查点；交付前自检改为六项讲透 + 代码完整性 + 知识点数量。Phase 2A 增加顶层 `changed_interfaces`（跨部分接口变更清单）与 `open_threads` 归档（`research.md`），避免续写按旧签名或丢失未决问题。Phase 2B 增加 part 顶部“未验证/失败/跳过”警告横幅（通过后移除），并由列表检测“内容已变更”。P0 补强熟悉主题的来源下限、续写每 3 个部分全读审计、验证全量/接口快照/片段结构检查、静态检查脚本、golden samples 与旧教程迁移清单。旧教程无需迁移；未标记代码块仍按 `runnable` 处理，旧教程中的片段/`...` 若被验证误判，补 `fragment` 标记即可。
+**v0.5.4 优化**：**讲透优先 + 验证/续写补强**——配额只约束知识点数量，不再限制解释长度、类比句数、标注总数或代码行数；代码块区分 `runnable` / `fragment` / `exercise` / `text` / `output` / `expected_failure`，验证只执行可执行块和检查点；交付前自检改为六项讲透 + 代码完整性 + 知识点数量。新增 `changed_interfaces`、`open_threads` 归档、未验证横幅、续写契约与 `course_plan` 漂移检查、旧签名自查、级联失效和 `_needs_backfill`。单部分正文/单块过大时优先拆分，不压缩解释。旧教程无需强制迁移；未标记代码块仍按 `runnable` 处理，旧教程中的片段/`...` 若被验证误判，补 `fragment` 标记即可。
 
 **安装使用：** 从本仓库的 GitHub Releases 页面下载最新版本的技能包（`lathe-x.y.z.zip`），解压后将 `lathe/` 目录复制到 QoderWork 的技能目录即可，详细步骤见 [使用教程](./docs/skills-tutorial.md)。
 
