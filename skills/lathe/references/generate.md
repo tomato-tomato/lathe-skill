@@ -2,7 +2,7 @@
 
 按需为任意主题生成动手实践型技术教程的第一部分。
 
-**先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md`（教程结构、配额矩阵、标注配额、不变量、研究纪律、预检、写法细节、交付前自检）。本文件只补充生成特有的流程，不重述其中内容。
+**先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md`（教程结构、配额矩阵、标注规则、不变量、研究纪律、预检、写法细节、交付前自检）。本文件只补充生成特有的流程，不重述其中内容。
 
 ## 协议
 
@@ -13,8 +13,8 @@
 5. **选定风格主锚点**：按 `<SKILL_DIR>/SKILL.md`「风格主锚点速查」表匹配主锚点，记下其 id 待写入 `style_anchor`。**只选 id 时不读 `style-benchmarks.md`**；仅当需要理解该锚点的具体写作手法时才读它的「标杆作者」表。
 6. **先研究主题**（见 writing-core.md"先研究"，按 `topic_novelty` 取配额矩阵中的检索预算）——这是确保准确性的最关键步骤。
 7. 静默执行**预检**（见 writing-core.md）。不要让用户审批。
-8. 撰写第一部分（结构见 writing-core.md"教程结构"）。**动笔前先确定 `course_plan`（3-8 项，每项一句话）**，再写 part-01；part-01 完成路线图的第 1 项。`course_plan` 写入 metadata，不是 `index.md`。
-9. 执行 writing-core.md **"交付前自检"**——尤其核对标注配额。
+8. 撰写第一部分（结构见 writing-core.md"教程结构"）。**动笔前先确定 `course_plan`（3-8 项，每项一句话）**，再写 part-01；part-01 完成路线图的第 1 项。`course_plan` 写入 metadata，不是 `index.md`。本部分主知识点控制在 4-7 个；课程计划中超出本部分范围的知识点写进 `course_plan` / `next_hook`，不要压进同一部分，也不要一次写多个部分。
+9. 执行 writing-core.md **"交付前自检"**——尤其核对六项讲透、代码完整性与知识点数量。
 10. **存储教程**（见下方"写完之后"）。
 11. **【条件步骤】同步面试文档** —— **仅当本次触发含独立的 `面试` / `interview` token 时**：在教程（`part-01.md` + `metadata.json`）**落盘完成之后**，按 `<SKILL_DIR>/references/interview.md` 为该课程生成 **Part 1 的面试分段**（含文档创建与头部三表）。**未含该 token 时跳过本步**——本步骤不影响上方 1-10 步的任何规则。
 
@@ -118,7 +118,7 @@
 | `tools` | 与读者锁定的每个工具链版本一条 |
 | `sources` | 研究期间查阅的 URL，无网络访问则为空 |
 | `voice` / `model` | 使用的 voice 名称 / 你运行的模型（如 `QoderWork`） |
-| `continuity` | **必须初始化**——`controlling_example`、`fixed_numbers`、`metaphor`（无则空串）、`metaphor_retired: false`、`covered_concepts`（本部分讲透的概念，只追加不合并）、`open_threads`（已提出但未展开的问题/伏笔，最多 10 条）、`next_hook`（`## 接下来` 指向的方向）、`part_titles`（`{"part-01.md": "<一级标题>"}`）、`updated_through: "part-01.md"`、`updated_at`。摘要总量 1200 字软 / 2000 字硬，分字段上限见 `metadata.md`。这一步让后续续写无需重读全部历史部分 |
+| `continuity` | **必须初始化**——`controlling_example`、`fixed_numbers`、`metaphor`（无则空串）、`metaphor_retired: false`、`covered_concepts`（本部分讲透的概念，只追加不合并）、`open_threads`（已提出但未展开的问题/伏笔，最多 10 条）、`next_hook`（`## 接下来` 指向的方向）、`part_titles`（`{"part-01.md": "<一级标题>"}`）、`updated_through: "part-01.md"`、`updated_at`。摘要总量 1200 字软 / 2000 字硬是**索引预算**，不是正文预算；超出时归档，不压缩课程正文。分字段上限见 `metadata.md`。这一步让后续续写无需重读全部历史部分 |
 
 骨架（字段含义与自愈协议见 `metadata.md`）：
 
@@ -172,7 +172,7 @@
 然后告诉用户：
 - "**教程已保存**到 `<实际保存目录>/<slug>/`。"
 - "这是第一部分。要添加更多部分，调用 `/lathe 续写 <slug>`（或 `/lathe extend <slug>`），可以给出指导或让它自然延续。"
-- "验证是可选的：调用 `/lathe 验证 <slug>`（或 `/lathe verify <slug>`）。需要本地安装教程的工具链。"
+- "验证是可选的：调用 `/lathe 验证 <slug>`（或 `/lathe verify <slug>`）；需要本地安装教程的工具链。无论是否验证，本部分代码都必须完整（`runnable` / `fragment` / `exercise` 标记；不得用 `...` 省略运行必需代码）。验证只执行 `runnable` 块和检查点，跳过片段/练习。"
 - "要对某个部分提问，调用 `/lathe 提问 <slug> part-01.md`（或 `/lathe ask <slug> part-01.md`）然后跟上你的问题。"
 - "其他操作：复习 `/lathe 复习 <slug>`、收尾完结 `/lathe 续写 收尾 <slug>`、标签 `/lathe 标签 <slug>`、创建语气 `/lathe 语气 [名称]`、扫描登记 `/lathe 扫描`、查看全部 `/lathe 列表`。"
 - **（仅带 `面试` token 时）** "**面试文档已同步生成**到 `<路径>`；后续可 `/lathe 复习 <slug> 面试` 增量补齐，或直接续写（有面试文档时会自动同步）。"

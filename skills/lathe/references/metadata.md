@@ -23,7 +23,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 ```json
 {
   "_warning": "⚠️ 本文件是该教程的索引文件，请勿删除。误删后 lathe 将无法识别此教程；可运行 /lathe 标签 <slug> 或任一写入型操作触发自愈重建。",
-  "lathe_version": "<当前技能版本，如 0.5.3.1>",
+  "lathe_version": "<当前技能版本，如 0.5.4>",
   "slug": "<kebab-case 短名称>",
   "title": "<教程标题>",
   "topic": "<用户的原始主题描述>",
