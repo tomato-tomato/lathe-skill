@@ -17,7 +17,7 @@
 
 0. **解析教程位置。** 按 `<SKILL_DIR>/SKILL.md`"教程位置解析规则"找到该 slug 的实际目录。**若 `metadata.json` 缺失或损坏**，先执行 `<SKILL_DIR>/references/metadata.md`"metadata.json 自愈"，重建确认后再继续。
 
-1. **吸收现有教程。** 先读 `metadata.json`，取 `voice`（复习材料沿用同一 voice）、`language`（保持同一正文语言）、`goal`（如有）、`continuity`（控制性示例与固定数字直接取自摘要，无需从正文重新提炼），并读取 `changed_interfaces`（如有）。若教程目录存在 `research.md`，同时读取其中的 `## Open Threads Archive` 与 `## Changed Interfaces Archive`，用于后续方向和目标回顾；归档内容不是新教学内容。
+1. **吸收现有教程。** 先读 `metadata.json`，取 `voice`（复习材料沿用同一 voice）、`language`（保持同一正文语言）、`goal`（如有）、`continuity`（控制性示例与固定数字直接取自摘要，无需从正文重新提炼）、`knowledge_backlog` 与 `continuity.exercise_carry`（见下方「未讲条目」）。读取 `changed_interfaces`（如有）。若教程目录存在 `research.md`，同时读取其中的 `## Open Threads Archive`、`## Changed Interfaces Archive`、**`## Self-study Backlog` 与 `## Covered Concepts Archive`**——前两节用于后续方向，后两节用于「整门课覆盖核对」与「已归档概念」；归档内容不是新教学内容，但**复习必须把它们算进覆盖范围**，否则长课程只能看到最近未被归档的概念。
 
    然后**读取全部常规部分的正文**——复习材料要逐部分回顾并原样摘录代码与检查点命令，这是本操作绕不开的成本。但两处可以省：
    - **跳过已有的 `-review` 复习材料**：旧复习材料对新复习无用，只需从 `parts` 数组知道它们占用了哪些编号。
@@ -45,8 +45,11 @@
    ## 学习目标回顾（goal 字段存在时）
    对照 `goal` 说明当前已建立的能力，以及尚未覆盖的部分（如有）。若 `changed_interfaces` 非空，列出仍未闭合的接口变更；若 `open_threads` / `research.md` 归档有未决问题，列出 1-3 个最重要的。
 
+   ## 还没讲到的（按 ID）
+   把 `metadata.knowledge_backlog` 的每一条按 ID 列出（`core` 在前），再列 `research.md` 的 `## Self-study Backlog` 条目；每条写一句「为什么没讲 / 计划何时讲（`plan_ref` 指向哪个 Part）」。**没有积压时写「无——所有列入清单的知识点都已讲完」**，不要省略本节。这一段是「覆盖度」的唯一可见账本，读者据此判断这门课是否完整。
+
    ## 还可以继续深入的方向
-   基于课程内容、`continuity.open_threads`、`next_hook` 以及 `research.md` 的归档线索，给出 3-5 个延伸方向：
+   基于课程内容、`continuity.open_threads`、`next_hook`、`knowledge_backlog` 头部以及 `research.md` 的归档线索，给出 3-5 个延伸方向：
    每个方向一段话——是什么、为什么值得、从哪个部分的基础出发。
    末尾说明：想继续时调用 /lathe 续写 <slug>（可附带方向指导）。
    ```

@@ -30,12 +30,14 @@
    ```
    **<slug>** — <标题>
    状态：<status> ｜ 最近验证：<verify status + checked_at，无则 —> ｜ 标签：<tags> ｜ 正文语言：<language> ｜ 位置：<所在目录，与默认目录相同时可省略>
+   积压：<n> 条（core <m>）
    部分（<N>）：
    1. part-01.md — <该部分的一级标题>
    2. part-02.md — <该部分的一级标题>
    3. part-03.md — <该部分的一级标题>
    ```
 
+   - **积压行只在 `metadata.knowledge_backlog` 非空时显示**；`n` = 数组长度，`m` = 其中 `priority == "core"` 的条数。为空时整行省略，不显示「积压：0 条」。**这一行只读 metadata，不读取正文或 `research.md`**（自学清单条数只在单教程详情里读）。
    - 部分列表来自 `metadata.json` 的 `parts` 数组，各部分标题按第 2 步的取标题优先级获得。文件名含 `-review` 后缀的在标题后标注 *（复习）*。
    - 若验证结果含逐部分明细（`parts` 数组），在对应部分后标注 `✅ passed` / `❌ failed` / `⏭️ skipped` / `⏭️ not_run`（`-review` 复习材料不参与验证，无标注）。若该部分为 `passed` 但内容已变更（part mtime 晚于 `checked_at`），改标 `⚠️ 内容已变更，需重新验证`。
    - `status` 为 `completed` 的课程，在状态列显示 `⭐ completed（已完结）`。
@@ -63,8 +65,8 @@
    - 仓库/分支/本地项目路径/锁定工具版本（如有）；
    - 验证结果：状态、时间，若失败则给出失败的部分、步骤和错误信息；若为陈旧的 `verifying` 按无参数分支第 5 步标注中断；
    - `continuity` 存在时，用一行说明连续性摘要的新鲜度（`updated_through` 是否跟上最后一个常规部分）——落后时提醒：下次续写会先重建摘要（一次性成本）。
-   - 展示活跃 `changed_interfaces` 数量、`continuity.open_threads` 数量；教程目录存在 `research.md` 时注明“有归档”（只检查存在性，不读内容）。
-3. **给出下一步建议**：根据状态提示可用操作（如 `unverified` → 提示可 `/lathe 验证 <slug>`；上一部分"接下来"有未决问题 → 提示可 `/lathe 续写 <slug>`；久未学习 → 提示可 `/lathe 复习 <slug>`；目标已达成 → 提示可 `/lathe 续写 收尾 <slug>` 完结；`completed` → 说明已完结，续写可重新开放）。
+   - 展示活跃 `changed_interfaces` 数量、`continuity.open_threads` 数量；**积压 `knowledge_backlog` 的条数与其中 `core` 条数**；教程目录存在 `research.md` 时注明“有归档”，并**只读它的 `## Self-study Backlog` 一节**数出降级条目数（其余小节不读）。
+3. **给出下一步建议**：根据状态提示可用操作（如 `unverified` → 提示可 `/lathe 验证 <slug>`；上一部分"接下来"有未决问题 → 提示可 `/lathe 续写 <slug>`；久未学习 → 提示可 `/lathe 复习 <slug>`；目标已达成 → 提示可 `/lathe 续写 收尾 <slug>` 完结；`completed` → 说明已完结，续写可重新开放）。**`knowledge_backlog` 非空时，续写建议优先说明“先还债”：按「配额来源与优先级」先讲积压头部，再讲新主题。**
 
 ## 边界
 
