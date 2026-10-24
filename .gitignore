@@ -19,5 +19,10 @@ skills.zip
 
 # temp
 temp/
-scripts/
-tests/
+# 仓库根目录的本地检查脚本与 fixture（技能自带的 skills/lathe/scripts/ 需要随技能发布，不能被忽略）
+/scripts/
+/tests/
+
+# Python bytecode（运行 skills/lathe/scripts/ 时生成）
+__pycache__/
+*.pyc
