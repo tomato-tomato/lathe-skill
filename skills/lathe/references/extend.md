@@ -116,7 +116,8 @@
 
 - 将新部分文件名追加到 `parts` 数组；
 - 将新查阅的来源 URL 追加到 `sources` 数组（去重）；
-- **维护 `changed_interfaces`：** 本部分有 API/签名/跨文件契约变化时，按 `metadata.md` 的字段规范追加条目（`file` / `symbol` / `from` / `to` / `call_sites` / `part`）；同一符号只保留最新一条活跃条目；活跃超过 8 条，或旧条目被替代时，移到 `research.md` 的 `## Changed Interfaces Archive`。没有变化时不改（空数组保持空）。
+- **维护 `changed_interfaces`：** 本部分有 API/签名/跨文件契约变化时，按 `metadata.md` 的字段规范追加条目（`file` / `symbol` / `from` / `to` / `call_sites` / `supersedes` / `part`）；同一符号只保留最新一条活跃条目；活跃超过 8 条，或旧条目被替代时，移到 `research.md` 的 `## Changed Interfaces Archive`。没有变化时不改（空数组保持空）。
+  **若本次变更会让较早部分的某组检查点输出字面失配**（状态码、返回体形状、字段增删、错误结构等），必须在条目里写 `supersedes: ["part-NN.md#k"]`（k = 该部分正文里加粗的检查点组号）；**不要回头修改旧部分**。验证会跳过被登记的组并记 `historical`，旧部分的 `passed` 不被推翻。只影响 `runnable` 代码块的签名变化不登记 `supersedes`（由旧签名检查负责）。
 - **增量更新 `continuity`**（契约见 `<SKILL_DIR>/references/metadata.md`）：追加本部分新增的 `covered_concepts`（**只追加、不合并**）与 `fixed_numbers`、更新 `open_threads`（已提出但未展开的问题/伏笔，最多 10 条，每条 ≤80 字；已解决/溢出移到 `research.md` 的 `## Open Threads Archive`，不删除）、覆盖 `next_hook` 为本部分"接下来"指向的方向、`part_titles` 加入本部分标题、`updated_through` 设为本部分文件名、刷新 `updated_at`；若本部分明确告别了隐喻则置 `metaphor_retired: true`。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；这是**索引预算**，不是正文预算，超出时归档/压缩索引字段，不压缩课程正文。分字段上限见 `metadata.md`。**这一步不能省——省掉它，下次续写就要全文重读。**
 - **更新 `knowledge_backlog`（0.5.5 新增）：** ① 本部分讲掉的条目**从数组移除**（不是标 done，避免越积越长）；② 本次用户清单里没讲的按原顺序入队，**入队前先去重**（对比 `covered_concepts` 丢弃已讲过的、对比现有条目合并措辞）；③ 触到上限 14 条时停止入队，按「积压三选一」处理，降级的条目写进 `research.md` 的 `## Self-study Backlog`；④ 连续 2 次净增长 ≥3 条时输出重规划草案（**用户确认后才改 `course_plan`**）。清空后写 `[]`，不要留 `null`。
 - **更新 `continuity.exercise_carry`（0.5.5 新增）：** 按三档写入本部分练习的承接结果 `{integrated: [], chapter: [], deferred: []}`（各 ≤3 条、每条 ≤40 字）；`deferred` 的条目同时进 `knowledge_backlog`。上一部分留给本部分的承接若已讲透，从 `integrated`/`chapter` 移除，并把概念追加进 `covered_concepts`。

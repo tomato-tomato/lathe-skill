@@ -46,6 +46,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
       "from": "<旧签名/旧契约>",
       "to": "<新签名/新契约>",
       "call_sites": ["<需要更新的调用点>"],
+      "supersedes": ["<被本变更作废的旧检查点，如 part-01.md#3>"],
       "part": "part-NN.md"
     }
   ],
@@ -99,7 +100,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `experience_level` | 生成时询问 | 三档枚举，驱动"概念锚定"的类比深度（见 writing-core.md）。**续写读取，不重新询问** |
 | `topic_novelty` | 生成时确认（可按 `experience_level` 推断） | 三档枚举，驱动配额矩阵（检索预算、地基章节、标注、概念锚定）。**续写读取，不重新询问**；缺失时按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent` |
 | `course_plan` | 生成时初始化；续写时维护 | 3-12 项课程路线图，每项 `{part, title, goal, prerequisites}`。part-01 完成第 1 项；续写优先按下一项推进，用户指导可覆盖。**它是 metadata 字段，不是 `index.md`** |
-| `changed_interfaces` | 生成时初始化/写入；续写时维护 | 跨部分活跃接口变更清单；按符号记录，最多 8 条；字段 `file` / `symbol` / `from` / `to` / `call_sites` / `part`；超出或同符号被替代时归档到 `research.md`。无变化时为空数组 |
+| `changed_interfaces` | 生成时初始化/写入；续写时维护 | 跨部分活跃接口变更清单；按符号记录，最多 8 条；字段 `file` / `symbol` / `from` / `to` / `call_sites` / `supersedes` / `part`；超出或同符号被替代时归档到 `research.md`。无变化时为空数组 |
 | `knowledge_backlog` | 生成时初始化；续写时维护 | **用户列出但还没写进任何部分的知识点队列**（0.5.5 新增）。每项 `{id, text, from, plan_ref, priority}`；**最多 14 条**（= 2 个 Part 的量）、每条 `text` ≤60 字；`plan_ref` 指向 `course_plan` 的第几项（无归属写 `null`）；`priority` 取 `core`（教程承诺）或 `self-study`。先进先出，讲完即删；触到上限时走「积压三选一」（见 writing-core.md）。无内容写 `[]` |
 | `style_anchor` | 生成时选定 | 风格标杆主锚点 id。续写沿用，避免重复加载 style-benchmarks.md |
 | `continuity` | 续写/收尾每次更新 | **续写连续性摘要**，见下方专节 |
@@ -155,6 +156,10 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 - **何时写入：** 修改现有公开 API/签名、导出类型、数据库 schema、配置契约，或任何跨文件接口时。
 - **粒度：** 按符号一条；同一文件多个符号就多条。
 - **字段：** `file`、`symbol`、`from`、`to`、`call_sites`、`part`。`from`/`to` 用一行签名或短契约描述；`call_sites` 列出需要跟着改的文件/符号，已确认无需外部改动时写 `[]`，并在 part 的改动面表说明理由。
+- **`supersedes`（作废旧检查点）：** 可选数组，元素是 `"<part 文件>#<检查点组号>"`（如 `"part-01.md#3"` 指 Part 1 的**检查点 ③**，按正文里加粗的 ①②③ 组号计）。当本次变更会让某个**较早部分**的检查点输出字面失配（返回体形状、状态码、字段增删、错误结构等）时，必须登记；只写不受影响的检查点不要登记。没有影响时省略或写 `[]`。
+  - 它只覆盖**检查点命令的预期输出**，不覆盖 `runnable` 代码块。`runnable` 的旧签名由 `verify.md` 的 2b 检查负责，且**只对「变更引入之后」的部分生效**——更早部分的旧签名是历史正确状态，不算失败。
+  - 组号必须按正文的加粗序号写（不是 `runnable` 的步骤号）；部分被重排/改号后要复核这些引用。
+  - 验证会跳过被登记的检查点组并记为 `historical`（见 `verify.md`），**不算失败**；该部分的既有 `passed` 不被推翻。
 - **上限：** 活跃 8 条。超过时，优先归档已解决/被替代的条目；仍有活跃溢出时，归档最早条目，并在 `research.md` 标记 `active (overflow)`；续写/验证涉及该符号时读取归档。
 - **替代关系：** 同一符号只保留最新一条活跃条目；旧条目归档，并注明 `superseded by <part>`。
 - **读取：** 续写写之前读活跃条目；若本部分涉及已归档接口，读 `research.md` 的相关小节。验证把活跃条目当检查表，逐条核对调用点；不做自动签名推断。

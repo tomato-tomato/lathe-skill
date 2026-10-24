@@ -119,7 +119,7 @@
 | `experience_level` | 分组提问第 3 项 → `beginner` / `familiar` / `experienced` |
 | `topic_novelty` | 分组提问第 4 项 → `new` / `adjacent` / `familiar`；驱动配额矩阵 |
 | `course_plan` | 3-12 项课程路线图：每项 `{part, title, goal, prerequisites}`；part-01 完成第 1 项；写入 metadata，不是 `index.md` |
-| `changed_interfaces` | 跨部分接口变更清单：每项 `{file, symbol, from, to, call_sites, part}`；按符号记录，最多 8 条；无变化写 `[]`。详细规则见 `metadata.md` |
+| `changed_interfaces` | 跨部分接口变更清单：每项 `{file, symbol, from, to, call_sites, supersedes, part}`；按符号记录，最多 8 条；`supersedes` 登记被本次变更作废的旧检查点（如 `"part-01.md#3"`），没有写 `[]`；无变化写 `[]`。详细规则见 `metadata.md` |
 | `knowledge_backlog` | 用户列出但 part-01 没讲的知识点队列：每项 `{id, text, from, plan_ref, priority}`；≤14 条、每条 ≤60 字；没有写 `[]`（0.5.5 新增，详见 `metadata.md`） |
 | `style_anchor` | 协议第 5 步选定的主锚点 id |
 | `repo` / `repo_branch` | 读者确认的仓库与分支，独立教程则为空 |

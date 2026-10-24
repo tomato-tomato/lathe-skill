@@ -50,8 +50,9 @@
 
 2b. **改动面静态预检（有 `changed_interfaces` 时）。** 读取 `metadata.json` 的活跃 `changed_interfaces`，只对本次待执行部分逐条核对；被增量复用跳过的部分继承上次结果，不重复核对：
 
+   - **只对「该变更引入之后」的部分检查旧签名：** 若当前待执行部分的编号**早于**条目的 `part`（例如 Part 1 遇到 Part 2 才引入的变更），它的 `runnable` 里出现 `from` 旧签名是**历史正确状态**，跳过这条的旧签名检查，不计失败；从 `part` 及其之后的部分才按下面的规则判。
    - `call_sites` 中的每个调用点，是否在教程中有对应代码块、插入位置，或明确的“无需改”说明；
-   - 当前部分的 `runnable` 代码块中，是否还出现该条目的 `from` 旧签名/旧契约（出现在正文解释里不算，出现在 `runnable` 块里算）；
+   - 当前部分的 `runnable` 代码块中，是否还出现该条目的 `from` 旧签名/旧契约（出现在正文解释里不算，出现在 `runnable` 块里算；仅限 `part` 及之后的部分）；
    - 新签名/新契约 `to` 是否至少出现在代码块或改动面表中；
    - 条目缺少必要字段（file/symbol/from/to/call_sites/part）时，记为 metadata 风险并报告；
    - 若 `research.md` 的 `## Changed Interfaces Archive` 中有 `active (overflow)` 条目且涉及本次部分，同样按上述规则核对；
@@ -103,6 +104,7 @@
 
    **跳过文件名含 `-review` 后缀的复习材料**（回顾性内容，无可执行新步骤），结果中记为 `not_applicable` 或省略。安装前置条件，按顺序创建文件并粘贴 `runnable` 代码块，然后运行 `## 检查点` 命令并与声明的预期输出比较。
    - **只把 `runnable` / `expected_failure` 代码块和检查点命令视为可执行面。** `fragment` / `exercise` / `text` / `output` 跳过，不改写、不猜测、不单独粘贴；在结果/报告中说明跳过了哪些块及原因。
+   - **历史检查点（`changed_interfaces.supersedes`）：** 执行前先汇总活跃条目里的 `supersedes`。当某部分的某组检查点（按正文加粗的 ①②③ 计）被登记时，**跳过这一组的全部命令**，在结果里记 `historical_steps: ["part-01.md#3"]`，并注明「契约已变更（见 changed_interfaces）」。跳过不产生失败、不写失败横幅；该部分其余步骤照常执行，全部通过仍记 `passed`。**不要**因为跳过就把它改成 `skipped`，也不要把被登记的组算进 `failed_step` 编号。
    - **`expected_failure` 必须按预期失败执行：** 命令意外成功、或错误/退出码与教程声明不一致，记该块失败；符合预期则通过，并在报告中列为“预期失败”。
    - **`runnable` 块中若出现 `...` 省略行，直接记该块失败**（代码不完整，不区分是否解释），不要猜测省略内容后继续执行。无关样板应放在 `fragment` 块。
    - **`fragment` 必须能说明文件与接缝。** 前文没有写清文件/插入位置的，记为 `failed` 或在报告中明确提示“片段缺少接缝说明”。
@@ -117,13 +119,13 @@
 
 6. **先更新验证状态横幅，再更新该教程目录中的 `verify-result.json` 记录结果。** 对本次实际执行的部分按上文「验证状态横幅」更新/移除横幅；未执行或增量复用跳过的部分不改。若本次**只**改了状态横幅、没有版本冲突修复等正文改动，刷新 `metadata.continuity.updated_at` 为当前时间，避免下次续写把横幅写入误判为手工编辑；如果改了正文，保留旧 `updated_at`，让续写按手工编辑重建。然后写入结果，包含整体状态、逐部分明细、`mode`（`full` / `incremental`）和 `changed_interfaces_snapshot`（当前活跃 `changed_interfaces` 的 JSON 副本；空数组也要写）。下面示例为简洁省略了后两个字段：
 
-   - **一切正常（含经修复后通过）：** 若某部分经版本冲突修复后通过，用 `fixes` 数组记录修复内容；复习材料用 `not_applicable`；增量复用跳过的部分保留其 `passed` 并可标 `"skipped_reuse": true`：
+   - **一切正常（含经修复后通过）：** 若某部分经版本冲突修复后通过，用 `fixes` 数组记录修复内容；复习材料用 `not_applicable`；增量复用跳过的部分保留其 `passed` 并可标 `"skipped_reuse": true`；被 `supersedes` 作废的检查点用 `historical_steps` 记录（不影响 `passed`）：
      ```json
      {
        "status": "verified",
        "checked_at": "<ISO 8601 时间戳>",
        "parts": [
-         {"part": "part-01.md", "status": "passed", "skipped_reuse": true},
+         {"part": "part-01.md", "status": "passed", "skipped_reuse": true, "historical_steps": ["part-01.md#3"]},
          {"part": "part-02.md", "status": "passed", "fixes": ["Cargo.toml 锁定 edition 2024，但测试代码按 2021 语义编写；已将测试代码改写为 edition 2024 写法"]},
          {"part": "part-03-review.md", "status": "not_applicable"}
        ]
