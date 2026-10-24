@@ -18,11 +18,11 @@
 
 **v0.5.4 优化**：**讲透优先 + 验证/续写补强**——配额只约束知识点数量，不再限制解释长度、类比句数、标注总数或代码行数；代码块区分 `runnable` / `fragment` / `exercise` / `text` / `output` / `expected_failure`，验证只执行可执行块和检查点；交付前自检改为六项讲透 + 代码完整性 + 知识点数量。新增 `changed_interfaces`、`open_threads` 归档、未验证横幅、续写契约与 `course_plan` 漂移检查、旧签名自查、级联失效和 `_needs_backfill`。单部分正文/单块过大时优先拆分，不压缩解释。旧教程无需强制迁移；未标记代码块仍按 `runnable` 处理，旧教程中的片段/`...` 若被验证误判，补 `fragment` 标记即可。
 
-**v0.5.5 优化**：**练习承接 + 知识点积压治理**——练习不再限制「能否引入新概念」，改为每道题按**三档分流**（档 1 融进本部分知识点，须有「疑问复述 + 解释 + 可运行验证」三件套；档 2 进**承接章节**，≤1 章 / ≤2 条，不占 4-7 但计入总章 ≤9；档 3 顺延进 `knowledge_backlog`）。用户直接列知识点时先**归一化**（每条一个可命名的产出、保留原文编号），再按**名额分配表**决定本部分讲哪几条——积压越多，分给还债的位置越多（0/2/3/4）。`knowledge_backlog` 上限 14 条，触到闸门时给出「扩 Part / 降级自学清单 / 缩减」三选一；积压成规模时输出重规划草案，用户确认后才改 `course_plan`。被延后的知识点必须在**正文留提醒**（题面斜体 / 承接章末尾 / 本部分不覆盖）。**读取端同步补齐**：`/lathe 列表` 显示积压条数、`/lathe 复习` 单列「还没讲到的（按 ID）」并读取归档概念、`/lathe 续写 收尾` 用门禁拦住「带债完结」（backlog 未清零或 `course_plan` 有悬挂项时给你三选一，不会自动置 `completed`）。旧教程无需迁移：两个新字段缺失即视为空。**补充（2026-10-24）**：`changed_interfaces` 新增可选 `supersedes`，登记被后续契约变更作废的旧检查点；全量验证跳过并记 `historical`，旧部分保持 `passed`。
+**v0.6.0 优化**（原 0.5.5 分支并入，0.5.5 不单独发布）：**知识点不再无声消失**——① 练习承接三档 + 知识点积压治理：练习不再限制「能否引入新概念」，改为每道题按**三档分流**（档 1 融进本部分知识点，须有「疑问复述 + 解释 + 可运行验证」三件套；档 2 进**承接章节**，≤1 章 / ≤2 条，不占 4-7 但计入总章 ≤9；档 3 顺延进 `knowledge_backlog`）。用户直接列知识点时先**归一化**（每条一个可命名的产出、保留原文编号），再按**名额分配表**决定本部分讲哪几条——积压越多，分给还债的位置越多（0/2/3/4）。`knowledge_backlog` 上限 14 条，触到闸门时给出「扩 Part / 降级自学清单 / 缩减」三选一；积压成规模时输出重规划草案，用户确认后才改 `course_plan`。被延后的知识点必须在**正文留提醒**（题面斜体 / 承接章末尾 / 本部分不覆盖）。**读取端同步补齐**：`/lathe 列表` 显示积压条数、`/lathe 复习` 单列「还没讲到的（按 ID）」并读取归档概念、`/lathe 续写 收尾` 用门禁拦住「带债完结」（backlog 未清零或 `course_plan` 有悬挂项时给你三选一，不会自动置 `completed`）。旧教程无需迁移：两个新字段缺失即视为空。 ② **知识点账本 `syllabus.json`**：每个知识点一行一条、状态只改不删，`metadata.syllabus_ids` 做 ID 镜像；生成时先确认整门课大纲，复习/列表/收尾门禁按账本对账。③ **写前计划确认 + 覆盖回执**：列了知识点或有顺延/去重/闸门时先确认再写，交付附对账等式与「知识点 → 章节」回执；去重只丢完全相同的，积压闸门默认扩 Part。④ **交付前试跑 + 自带检查脚本**（`scripts/` 下 `part_lint.py`、`trial_run.py`、`ledger_check.py`），回执数字直接取脚本输出。⑤ **规则收拢**到 `references/knowledge-ledger.md`。⑥ 其他：必做练习最多 2 道引入新概念、`changed_interfaces.supersedes`、`/lathe 提问` 勘误确认、若干规则勘误。旧教程无需迁移。完整清单见 Releases。
 
 **安装使用：** 从本仓库的 GitHub Releases 页面下载最新版本的技能包（`lathe-x.y.z.zip`），解压后将 `lathe/` 目录复制到 QoderWork 的技能目录即可，详细步骤见 [使用教程](./docs/skills-tutorial.md)。
 
-> 🔄 **技能仍在持续迭代** —— 当前版本 **v0.5.5**。每次更新的内容见 [Releases](https://github.com/tomato-tomato/my-rust-lathe-courses/releases)；使用教程 [docs/skills-tutorial.md](./docs/skills-tutorial.md) 会随版本同步更新。欢迎提 Issue 反馈问题或建议。
+> 🔄 **技能仍在持续迭代** —— 当前版本 **v0.6.0**。每次更新的内容见 [Releases](https://github.com/tomato-tomato/my-rust-lathe-courses/releases)；使用教程 [docs/skills-tutorial.md](./docs/skills-tutorial.md) 会随版本同步更新。欢迎提 Issue 反馈问题或建议。
 
 非常感谢 Lathe 这个工具 🙏 ！终于让我找到适合自己的学习 Rust 的方法。
 
@@ -38,7 +38,7 @@
 | 复习教程 | `/lathe 复习\|review <slug>`            | 生成复习材料：逐部分回顾、自测题、重跑检查点、可继续深入的方向（含 `面试` 关键词时转「面试文档」）                                              |
 | 面试文档 | `/lathe 面试\|interview <slug> [part]`  | 生成按 Part 分章的面试要点文档（一句话回答 → 展开 → 追问点 → 我的项目里）；只对教学部分产出，续写时自动同步，中途启用会先检测遗漏再确认补写范围 |
 | 验证教程 | `/lathe 验证\|verify <slug>`            | 临时目录中端到端执行教程，含版本冲突检测与修复                                                                                                  |
-| 提问内容 | `/lathe 提问\|ask <slug> [part] <问题>` | 基于教程具体内容回答问题                                                                                                                        |
+| 提问内容 | `/lathe 提问\|ask <slug> [part] <问题>` | 基于教程具体内容回答问题；发现教程错误时给出勘误确认块，你手动确认后才修改                                                                        |
 | 管理标签 | `/lathe 标签\|tag <slug>`               | 管理教程的搜索标签                                                                                                                              |
 | 创建语气 | `/lathe 语气\|voice [名称]`             | 创建自定义写作语气预设                                                                                                                          |
 | 扫描登记 | `/lathe 扫描\|scan [目录...]`           | 发现并登记散落各处的已有教程，写入配置以便被 `列表`/`续写`/`验证` 等命令识别                                                                    |
@@ -53,7 +53,7 @@ my-rust-lathe-courses/
 ├── .gitmodules
 ├── LICENSE
 ├── skills/
-│   └── lathe/           ← 统一的模块化技能目录（SKILL.md 入口路由 + references/ 13 个操作模块）
+│   └── lathe/           ← 统一的模块化技能目录（SKILL.md 入口路由 + references/ 14 个模块 + scripts/ 检查脚本）
 ├── docs/                ← skills 使用教程（skills-tutorial.md）、Rust 学习相关文档
 ├── tutorials/           ← skills生成的课程（每门课程一个子目录，含 metadata.json 和分部分的 markdown）
 └── code/
