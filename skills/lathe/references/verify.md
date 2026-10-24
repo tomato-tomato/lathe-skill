@@ -15,9 +15,9 @@
 | `exercise` | 练习/填空；应有参考答案或检查方式 | 跳过，不执行 |
 | `text` / `output` | 非执行文本：预期输出、文法、文件树、日志、树形 | 跳过，不占步骤号 |
 | `expected_failure` | 故意失败的命令/示例；前文写明预期退出码/错误 | 执行；预期非零退出；意外成功记失败 |
-| 未标记 | 兼容旧教程，按 `runnable` 处理 | 执行 |
+| 未标记 | 兼容旧教程，按 `runnable` 处理；**图表语言 `mermaid` / `plantuml` / `dot` 例外，视同 `text`** | 执行（图表语言跳过，不占步骤号） |
 
-语法：在语言标识后追加类型词，例如 `rust runnable`、`rust fragment`、`rust exercise`、`bash expected_failure`、`text` / `output`。`fragment` 的文件与接缝说明写在前文，不塞进 fence；`expected_failure` 的预期退出码/错误写在前文。
+语法：在语言标识后追加类型词，例如 `rust runnable`、`rust fragment`、`rust exercise`、`bash expected_failure`、`text` / `output`。**类型是 info string 里第一个属于上表的词，不是第一个词**（`rust runnable` 的类型是 `runnable`）。类型词之后可以附加 `file=...` 等属性（如 `rust fragment file=src/main.rs`），verify 目前不解析它们；`fragment` 的文件与接缝**仍以前文说明为准**，属性只是补充。`expected_failure` 的预期退出码/错误写在前文。
 
 同一文件的完整代码如果被拆成多个 `fragment`，教程必须另外提供一个覆盖最终状态的 `runnable` 块或检查点；verify 不自动拼装 fragments，也不把 `exercise` 当完整代码执行。
 
@@ -110,7 +110,7 @@
    - **`fragment` 必须能说明文件与接缝。** 前文没有写清文件/插入位置的，记为 `failed` 或在报告中明确提示“片段缺少接缝说明”。
    - **`exercise` 不直接执行。** 如果提供了参考答案或检查方式，可人工核对；没有则提示读者自行核对，不把练习块当完整代码。
    - **有代码改动但没有完整 `runnable` 块或检查点的部分，记为 `failed`**（缺少可执行面），除非该部分明确是纯概念/纯回顾内容。
-   - **步骤编号定义：** 每个部分内，只对 `runnable` / `expected_failure` 代码块和检查点命令按出现顺序统一编号（从 1 开始）——这就是结果中 `failed_step` 的含义；`fragment` / `exercise` / `text` / `output` 不占步骤号。
+   - **步骤编号定义：** 每个部分内，只对 `runnable` / `expected_failure` 代码块和检查点命令按出现顺序统一编号（从 1 开始）——这就是结果中 `failed_step` 的含义；`fragment` / `exercise` / `text` / `output` 以及未标记的图表块（`mermaid` 等）不占步骤号。
    - **跳过教学性和溯源性标注** —— `> [!PREDICT]`、`> [!RECALL]` 和 `> [!UNVERIFIED]` 不是可验证的步骤。
    - **旧签名提示（有 `changed_interfaces` 时）：** 对活跃条目的 `from` 旧签名，在验证工作区或 `local_project_path` 中做一次 grep；命中旧调用点且清单中没有“无需改”说明时，记为风险/失败提示。只做提示，不自动推断签名。
    - **输出归一化：** 比较预期输出时，先去除行尾空白、忽略空行差异，并替换教程明确声明为易变的时间戳/随机 ID/绝对路径；只用于教程声明的不稳定值，不能掩盖真实差异。

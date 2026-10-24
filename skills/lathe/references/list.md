@@ -66,6 +66,7 @@
    - 验证结果：状态、时间，若失败则给出失败的部分、步骤和错误信息；若为陈旧的 `verifying` 按无参数分支第 5 步标注中断；
    - `continuity` 存在时，用一行说明连续性摘要的新鲜度（`updated_through` 是否跟上最后一个常规部分）——落后时提醒：下次续写会先重建摘要（一次性成本）。
    - 展示活跃 `changed_interfaces` 数量、`continuity.open_threads` 数量；**积压 `knowledge_backlog` 的条数与其中 `core` 条数**；教程目录存在 `research.md` 时注明“有归档”，并**只读它的 `## Self-study Backlog` 一节**数出降级条目数（其余小节不读）。
+   - **知识点账本**：教程目录存在 `syllabus.json` 时，只按 `status` 计数，显示一行 `账本：taught a · queued b · planned c · self-study d · dropped e · duplicate f（共 n 条）`；不存在时显示「账本：未建立（下次续写会回填）」。若 `queued` 条数与 `knowledge_backlog` 长度不一致，附一句 *⚠️ 账本与积压不一致，下次续写会按账本修正*；若 `metadata.syllabus_ids` 里有账本中不存在的 ID，附一句 *⚠️ 账本缺少条目：<ID 列表>（可能被误删，下次续写会停下来请你确认恢复）*。两者都只提示，不写入。
 3. **给出下一步建议**：根据状态提示可用操作（如 `unverified` → 提示可 `/lathe 验证 <slug>`；上一部分"接下来"有未决问题 → 提示可 `/lathe 续写 <slug>`；久未学习 → 提示可 `/lathe 复习 <slug>`；目标已达成 → 提示可 `/lathe 续写 收尾 <slug>` 完结；`completed` → 说明已完结，续写可重新开放）。**`knowledge_backlog` 非空时，续写建议优先说明“先还债”：按「配额来源与优先级」先讲积压头部，再讲新主题。**
 
 ## 边界

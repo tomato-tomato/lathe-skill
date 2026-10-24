@@ -2,7 +2,7 @@
 
 按需为任意主题生成动手实践型技术教程的第一部分。
 
-**先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md`（教程结构、配额矩阵、标注规则、不变量、研究纪律、预检、写法细节、交付前自检）。本文件只补充生成特有的流程，不重述其中内容。
+**先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md`（教程结构、配额矩阵、标注规则、不变量、研究纪律、预检、写法细节、交付前自检）与 `<SKILL_DIR>/references/knowledge-ledger.md`（知识点来源与账本、写前确认、回执、练习承接）。本文件只补充生成特有的流程，不重述其中内容。
 
 ## 协议
 
@@ -12,17 +12,11 @@
 4. **确定教程语言**（见 `<SKILL_DIR>/SKILL.md`"教程语言"）——默认跟随对话语言，无需单独提问。
 5. **选定风格主锚点**：按 `<SKILL_DIR>/SKILL.md`「风格主锚点速查」表匹配主锚点，记下其 id 待写入 `style_anchor`。**只选 id 时不读 `style-benchmarks.md`**；仅当需要理解该锚点的具体写作手法时才读它的「标杆作者」表。
 6. **先研究主题**（见 writing-core.md"先研究"，按 `topic_novelty` 取配额矩阵中的检索预算）——这是确保准确性的最关键步骤。
-7. 静默执行**预检**（见 writing-core.md）。不要让用户审批。
-8. 撰写第一部分（结构见 writing-core.md"教程结构"）。**动笔前先确定 `course_plan`（3-12 项，每项一句话）**，再写 part-01；part-01 完成路线图的第 1 项。`course_plan` 写入 metadata，不是 `index.md`。本部分主知识点控制在构建名额 4-7 个（地基章节与 §0 承接章节不占名额，只计入「地基 + 承接 + 构建 ≤9」）。**课程计划中超出本部分范围的知识点，按原顺序写进顶层 `knowledge_backlog`（≤14 条，入队前先去重），并在正文留延后提醒**；不要写进 `course_plan` / `next_hook`（前者只放 Part 级路线，后者下次续写会被覆盖），不要压进同一部分，也不要一次写多个部分。按结构写清“本部分结束时的文件状态”和“下一部分起始状态”。若 part-01 修改了现有 API/签名或跨文件契约，按 metadata.md 的字段规范写入 `changed_interfaces`；没有变化时写空数组。
-
-   **若用户在主提示词里直接列出了知识点（0.5.5）：** 不要重复提问，直接按 writing-core.md「配额来源与优先级」处理——
-   ① **归一化**（每条一个可命名的产出、打 `主知识点/前置/可合并` 标签、保留原文编号）；
-   ② 按可用容量（构建名额 7；地基章节与 §0 承接章节不占它，只计入「地基 + 承接 + 构建 ≤9」）决定 part-01 讲哪几条；
-   ③ **装不下的写进顶层 `knowledge_backlog`**（≤14 条，含 `id`/`text`/`from`/`plan_ref`/`priority`），不要只写 `next_hook`；
-   ④ 在正文里留延后提醒（开头进度提示一句「本部分覆盖清单第 a–b 条，剩余 k 条已顺延」+ `**本部分不覆盖：**` 点名）。
-9. 执行 writing-core.md **"交付前自检"**——尤其核对六项讲透、代码完整性与知识点数量；若本部分有接口变更，核对 `changed_interfaces` 与 part 内的改动面表是否一致。自检按“两轮”流程，不反复全文通读。若正文（不含代码/来源）超过约 10,000 中文字符，或单个 `runnable` 超过约 100-120 行，优先拆部分/拆代码块，不压缩解释。
+7. 静默执行**预检**（见 writing-core.md），写法决策不让用户审批。**唯一例外——写前计划确认（生成时总是要做）**：先确定 `course_plan`（3-12 项），并为**每一项**列出 3-7 个大纲知识点（`P<plan>-<k>`，后续项可以是预估），按 knowledge-ledger.md「写前计划确认」把大纲 + 清单归一化（有清单时）+ part-01 计划发给用户，**拿到回复再动笔**。这一轮是「课程是否讲全」的基准，`直接写` / `--no-confirm` 不能跳过。
+8. 撰写第一部分（结构见 writing-core.md"教程结构"），完成路线图第 1 项；`course_plan` 写入 metadata，不是 `index.md`。构建名额 4-7（地基与 §0 承接章不占名额，计入总章 ≤9）。**只有两类条目进积压**：用户清单里属于第 1 项却装不下的、第 1 项范围内装不下的知识点；第 2 项及之后的知识点（包括用户整门课清单里属于后续项的条目）在账本里记 `planned`，不预先入队。清单归一化、去重、延后提醒按 knowledge-ledger.md；不要写进 `next_hook`，不要一次写多个部分。写清「本部分结束时的文件状态」和「下一部分起始状态」；修改了现有 API/签名或跨文件契约时按 metadata.md 写入 `changed_interfaces`，没有变化写 `[]`。
+9. 执行 writing-core.md **"交付前自检"**，包括**「交付前试跑与脚本检查」**（`part_lint.py`、`trial_run.py --run`）；有接口变更时核对 `changed_interfaces` 与改动面表一致。正文超过约 10,000 中文字符或单个 `runnable` 超过约 100-120 行时优先拆分，不压缩解释。
 10. **存储教程**（见下方"写完之后"）。
-11. **【条件步骤】同步面试文档** —— **仅当本次触发含独立的 `面试` / `interview` token 时**：在教程（`part-01.md` + `metadata.json`）**落盘完成之后**，按 `<SKILL_DIR>/references/interview.md` 为该课程生成 **Part 1 的面试分段**（含文档创建与头部三表）。**未含该 token 时跳过本步**——本步骤不影响上方 1-10 步的任何规则。
+11. **【条件步骤】同步面试文档** —— **仅当本次触发含独立的 `面试` / `interview` token 时**：在教程（`part-01.md` + `metadata.json` + `syllabus.json`）**落盘完成之后**，按 `<SKILL_DIR>/references/interview.md` 为该课程生成 **Part 1 的面试分段**（含文档创建与头部三表）。**未含该 token 时跳过本步**——本步骤不影响上方 1-10 步的任何规则。
 
 ## 始终只写第一部分
 
@@ -94,12 +88,12 @@
 结尾结构（接下来/寄语 → 结尾反思 → 练习 → 来源）的定义见 writing-core.md"教程结构"。写法要点：
 
 1. **寄语（或前向钩子）和结尾反思**放在 `## 接下来` 中。反思示例：*"在继续之前：用两句话说明，为什么环形缓冲区在这里优于通道？"* 不要替读者回答。part-01 的前向钩子要命名一个未决问题——它会成为 `continuity.next_hook`，是下次续写的默认任务。
-2. **`## 练习`** 必做 3-5 个 + 选做 0-3 个（总 ≤8）；每个具体到 30 秒内可开始。*"在两个振荡器之间添加 FM 调制。"* 而不是*"进一步探索。"* 新主题至少包含一个"照着改"和一个"从零复现/预测-验证"的必做练习。
+2. **`## 练习`** 必做 3-5 个 + 选做 0-3 个（总 ≤8）；每个具体到 30 秒内可开始。*"在两个振荡器之间添加 FM 调制。"* 而不是*"进一步探索。"* 新主题至少包含一个"照着改"和一个"从零复现/预测-验证"的必做练习。**必做题最多 2 道引入新概念**（进账本，`E01-<k>`）；选做题引入新概念须附「线索 + 官方文档入口」，不入积压。
 3. **`## 来源`** 只列*本部分*内联引用过的来源；数量不设上限，>5 条按主题分组。
 
 ## 写完之后（存储教程）
 
-在**用户确认的保存位置**下创建 `<目录>/<slug>/`（已通过冲突检查）并写入两个文件：
+在**用户确认的保存位置**下创建 `<目录>/<slug>/`（已通过冲突检查）并写入三个文件：
 
 **1. 写入** `part-01.md` —— 教程内容。在 H1 之后、正文之前插入 SKILL.md 规定的“未验证”状态横幅（`lathe:verify-status` 标记块）；横幅不计入教程结构或知识点配额。
 
@@ -120,7 +114,8 @@
 | `topic_novelty` | 分组提问第 4 项 → `new` / `adjacent` / `familiar`；驱动配额矩阵 |
 | `course_plan` | 3-12 项课程路线图：每项 `{part, title, goal, prerequisites}`；part-01 完成第 1 项；写入 metadata，不是 `index.md` |
 | `changed_interfaces` | 跨部分接口变更清单：每项 `{file, symbol, from, to, call_sites, supersedes, part}`；按符号记录，最多 8 条；`supersedes` 登记被本次变更作废的旧检查点（如 `"part-01.md#3"`），没有写 `[]`；无变化写 `[]`。详细规则见 `metadata.md` |
-| `knowledge_backlog` | 用户列出但 part-01 没讲的知识点队列：每项 `{id, text, from, plan_ref, priority}`；≤14 条、每条 ≤60 字；没有写 `[]`（0.5.5 新增，详见 `metadata.md`） |
+| `knowledge_backlog` | 用户清单里 part-01 装不下的条目 + 第 1 个 plan 项范围内溢出的知识点：每项 `{id, text, from, plan_ref, priority, merged_ids}`；≤14 条、每条 ≤60 字；`priority` 固定 `core`；没有写 `[]`（0.6.0 新增，详见 `metadata.md`） |
+| `syllabus_ids` | 账本 ID 镜像：`syllabus.json` 里全部 `id`，按字母序；以后只增不删（用来发现账本条目被整条删掉，见 knowledge-ledger.md 不变量 6） |
 | `style_anchor` | 协议第 5 步选定的主锚点 id |
 | `repo` / `repo_branch` | 读者确认的仓库与分支，独立教程则为空 |
 | `local_project_path` | 生成时通常为空，由续写操作填写 |
@@ -152,6 +147,7 @@
   ],
   "changed_interfaces": [],
   "knowledge_backlog": [],
+  "syllabus_ids": ["<syllabus.json 中全部 id，按字母序>"],
   "style_anchor": "<主锚点 id>",
   "repo": "<远程 URL 或空>",
   "repo_branch": "<分支或空>",
@@ -178,14 +174,28 @@
 
 > `course_plan` 的骨架示例只列 1 项；实际填写 **3-12 项**。`verify_workspace` 不在生成时写入——它由 `/lathe 验证` 首次创建 `.lathe-verify/` 工作区时补上。
 
-**3. 登记位置（仅当需要时）** —— **若本次保存位置等于 `tutorials_base_path`，跳过本步**（`tutorial_paths` 缺失即等价于"所有教程都在默认基础目录"，见 `<SKILL_DIR>/SKILL.md`"教程存储路径配置"）。仅当保存到**其他目录**时，才更新 `~/.lathe/config.json`，在 `tutorial_paths` 中写入 `"<slug>": "<本次使用的目录>"`（保留已有条目不动）。
+**3. 写入 `syllabus.json`（知识点账本）** —— 写前确认里认可的大纲与清单，每个知识点一行一条（格式与状态见 knowledge-ledger.md「1. 账本」）：part-01 讲掉的 `taught`（`at` = `part-01.md#<该章 ## 标题原文>`），第 1 项装不下的 `queued`（与积压一一对应），后续项的 `planned`，去重命中 `duplicate`，确认中被删的 `dropped_by_user`。全部 ID 按字母序写进 `metadata.syllabus_ids`。写完跑 `ledger_check.py <教程目录> --receipt part-01.md`，必须闭合。最小骨架：
 
-**4. 【条件】同步面试文档** —— **仅当本次触发含 `面试` token 时**：教程全部落盘后，按 `<SKILL_DIR>/references/interview.md` 执行——确认位置（分组提问第 10 项已收）、创建面试文档、写入「第一部分 · Part 1」分段。**未带该 token 时跳过本步，不产生任何面试文档相关写入。**
+```json
+{
+  "_warning": "⚠️ 本文件是该教程的知识点账本，请勿删除或手工删条目。lathe 用它核对每个知识点是否讲到；误删后下一次续写会按正文推断重建（推断条目会标 inferred）。",
+  "slug": "<slug>",
+  "updated_at": "<ISO 8601 时间戳>",
+  "points": [
+    {"id": "P1-1", "text": "<归一化后的知识点>", "src": "plan", "from": "course_plan#1", "tag": "main", "plan_ref": 1, "status": "taught", "at": "part-01.md#<章节标题>", "depth": "full"},
+    {"id": "3a", "text": "<归一化后的知识点>", "original": "<用户原文>", "parent": "3", "src": "user", "from": "user-list-<日期>", "tag": "main", "plan_ref": 2, "status": "planned"}
+  ]
+}
+```
 
-然后告诉用户：
+**4. 登记位置（仅当需要时）** —— **若本次保存位置等于 `tutorials_base_path`，跳过本步**（`tutorial_paths` 缺失即等价于"所有教程都在默认基础目录"，见 `<SKILL_DIR>/SKILL.md`"教程存储路径配置"）。仅当保存到**其他目录**时，才更新 `~/.lathe/config.json`，在 `tutorial_paths` 中写入 `"<slug>": "<本次使用的目录>"`（保留已有条目不动）。
+
+**5. 【条件】同步面试文档** —— **仅当本次触发含 `面试` token 时**：教程全部落盘后，按 `<SKILL_DIR>/references/interview.md` 执行——确认位置（分组提问第 10 项已收）、创建面试文档、写入「第一部分 · Part 1」分段。**未带该 token 时跳过本步，不产生任何面试文档相关写入。**
+
+然后告诉用户（**最前面是积压播报与覆盖回执**，格式见 knowledge-ledger.md「播报与覆盖回执」，生成时 `上次 a` 为 0；有 shell 时各行粘贴脚本输出）：
 - "**教程已保存**到 `<实际保存目录>/<slug>/`。"
 - "这是第一部分。要添加更多部分，调用 `/lathe 续写 <slug>`（或 `/lathe extend <slug>`），可以给出指导或让它自然延续。"
-- "验证是可选的：调用 `/lathe 验证 <slug>`（或 `/lathe verify <slug>`）；需要本地安装教程的工具链。无论是否验证，本部分代码都必须完整（`runnable` / `fragment` / `exercise` 标记；不得用 `...` 省略运行必需代码）。验证只执行 `runnable` 块和检查点，跳过片段/练习。"
+- "验证是可选的：调用 `/lathe 验证 <slug>`（或 `/lathe verify <slug>`）；需要本地安装教程的工具链。写作时已在临时目录做过一次「交付前试跑」（结果见覆盖回执的「试跑」行），验证会在 `.lathe-verify/` 里按读者视角完整重跑并维护状态横幅。本部分代码必须完整（`runnable` / `fragment` / `exercise` 标记；不得用 `...` 省略运行必需代码）。验证只执行 `runnable` 块和检查点，跳过片段/练习。"
 - "要对某个部分提问，调用 `/lathe 提问 <slug> part-01.md`（或 `/lathe ask <slug> part-01.md`）然后跟上你的问题。"
 - "其他操作：复习 `/lathe 复习 <slug>`、收尾完结 `/lathe 续写 收尾 <slug>`、标签 `/lathe 标签 <slug>`、创建语气 `/lathe 语气 [名称]`、扫描登记 `/lathe 扫描`、查看全部 `/lathe 列表`。"
 - **（仅带 `面试` token 时）** "**面试文档已同步生成**到 `<路径>`；后续可 `/lathe 复习 <slug> 面试` 增量补齐，或直接续写（有面试文档时会自动同步）。"

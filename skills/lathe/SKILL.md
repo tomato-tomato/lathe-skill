@@ -1,6 +1,6 @@
 ---
 name: lathe
-version: 0.5.5
+version: 0.6.0
 description: 按需生成、续写、复习、验证、提问动手实践型技术教程。当用户说 /lathe 并附带主题时使用，如 "/lathe 用 Zig 构建数字合成器"；也处理续写(extend)、收尾完结(finish)、复习(review)、验证(verify)、提问(ask)、打标签(tag)、创建语气(voice)、扫描登记(scan)和列出教程(list)等所有教程相关操作。支持中文和英文关键词。
 ---
 
@@ -42,7 +42,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 | **复习教程** | 复习、回顾 / review、revise、recap | `/lathe 复习 raft-go` 或 `/lathe review raft-go` | [references/review.md](references/review.md)（**含 `面试` token 时转** [references/interview.md](references/interview.md)） |
 | **面试文档** | 面试、interview（作为首个 token 且后跟已存在的 slug） | `/lathe 面试 raft-go` 或 `/lathe 面试 raft-go part-02` | [references/interview.md](references/interview.md) |
 | **验证教程** | 验证、检查、测试 / verify、check、test、validate | `/lathe verify raft-go` 或 `/lathe 验证 raft-go` | [references/verify.md](references/verify.md) |
-| **提问内容** | 提问、问、问题 / ask、question | `/lathe ask raft-go part-01 why use ring buffer` | [references/ask.md](references/ask.md) |
+| **提问内容** | 提问、问、问题 / ask、question | `/lathe ask raft-go part-01 why use ring buffer`（发现教程错误时会给出勘误确认块，你手动确认后才修改） | [references/ask.md](references/ask.md) |
 | **管理标签** | 标签、打标签 / tag、tags、label | `/lathe tag raft-go` 或 `/lathe 标签 raft-go` | [references/tag.md](references/tag.md) |
 | **创建语气** | 语气、风格 / voice、tone、style | `/lathe voice terse` 或 `/lathe 语气 terse` | [references/voice.md](references/voice.md) |
 | **扫描登记** | 扫描、登记、注册 / scan、register、sync | `/lathe 扫描` 或 `/lathe scan ~/tutorials` | [references/scan.md](references/scan.md) |
@@ -59,24 +59,25 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 ## 技能目录与共享文件
 
-本技能的入口文件是 `SKILL.md`，各模块文件位于其同级的 `references/` 子目录下。后文中 `<SKILL_DIR>` 指 **SKILL.md 所在目录**（如 `~/.qoder/skills/lathe` 或 `<项目>/.reasonix/skills/lathe`）。
+本技能的入口文件是 `SKILL.md`，各模块文件位于其同级的 `references/` 子目录下，检查脚本位于 `scripts/` 子目录。后文中 `<SKILL_DIR>` 指 **SKILL.md 所在目录**（如 `~/.qoder/skills/lathe` 或 `<项目>/.reasonix/skills/lathe`）。
 
-三个**共享**文件按需加载，不要无条件读取：
+四个**共享**文件按需加载，不要无条件读取：
 
 | 文件 | 内容 | 何时读取 |
 |------|------|----------|
 | [references/writing-core.md](references/writing-core.md) | 教程结构、配额矩阵、标注类型与配额、不变量、研究纪律、预检、写法细节、交付前自检 | **仅写作型操作**：生成、续写、收尾、复习、面试文档（面试文档**只用**其中的配额矩阵检索预算与「有据可依或标记」不变量） |
+| [references/knowledge-ledger.md](references/knowledge-ledger.md) | 知识点账本 `syllabus.json` 规范与不变量、知识点来源与名额、去重、积压闸门、写前计划确认、播报与覆盖回执、练习承接三档、延后提醒、检查脚本用法 | **生成、续写、收尾** |
 | [references/metadata.md](references/metadata.md) | `metadata.json` 完整结构、`continuity` 摘要规范、`course_plan`、自愈协议 | 写 `continuity` / `course_plan`、或遇到 metadata 缺失/损坏需自愈时；**生成时字段速查表已足够，不读** |
 | [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者表与场景侧重表 | **仅当需要理解某锚点的具体写作手法时**；只选 id 用下方「风格主锚点速查」表，不读本文件 |
 
 **反向清单——明确不要读取**（读多了会挤占上下文并拖慢执行）：
 
-- **生成新教程：** 不要读 `extend.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`；`voice.md` 仅在 voice 非 `plainspoken` 时读；`metadata.md` 仅在字段速查表不足或需自愈时读；`interview.md` **仅在本次带 `面试` 参数时**读。
-- **续写 / 收尾：** 不要读 `generate.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`。**`interview.md` 是例外**——该教程已有面试文档时读它以追加本部分分段，或带 `面试` 参数时读它以创建文档。
-- **复习：** 不要读 `generate.md`、`extend.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`；**含 `面试` token 时改读 `interview.md`**（本文件下方协议不再适用）。
-- **面试文档：** 不要读 `generate.md`、`extend.md`、`review.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`、`style-benchmarks.md`；`metadata.md` 仅在需自愈时读。
-- **验证：** 不要读 `writing-core.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`style-benchmarks.md`。
-- **提问 / 标签 / 列表 / 扫描：** 不要读 `writing-core.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`verify.md`、`style-benchmarks.md`。
+- **生成新教程：** 读 `writing-core.md` + `knowledge-ledger.md` + `generate.md`；不要读 `extend.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`；`voice.md` 仅在 voice 非 `plainspoken` 时读；`metadata.md` 仅在字段速查表不足或需自愈时读；`interview.md` **仅在本次带 `面试` 参数时**读。
+- **续写 / 收尾：** 读 `writing-core.md` + `knowledge-ledger.md` + `extend.md`（+ `metadata.md`）；不要读 `generate.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`。**`interview.md` 是例外**——该教程已有面试文档时读它以追加本部分分段，或带 `面试` 参数时读它以创建文档。
+- **复习：** 不要读 `knowledge-ledger.md`（只读 `syllabus.json` 数据）、`generate.md`、`extend.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`；**含 `面试` token 时改读 `interview.md`**（本文件下方协议不再适用）。
+- **面试文档：** 不要读 `knowledge-ledger.md`、`generate.md`、`extend.md`、`review.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`、`style-benchmarks.md`；`metadata.md` 仅在需自愈时读。
+- **验证：** 不要读 `writing-core.md`、`knowledge-ledger.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`style-benchmarks.md`。
+- **提问 / 标签 / 列表 / 扫描：** 不要读 `writing-core.md`、`knowledge-ledger.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`verify.md`、`style-benchmarks.md`。
 
 > 判据：只读上方"何时读取"列为"是"的文件；本清单是它的补集，两者不应有交集。
 
@@ -163,9 +164,13 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 每个教程目录下有一个 `metadata.json` 索引文件。字段一览（**完整结构、字段语义与自愈协议见 [references/metadata.md](references/metadata.md)**）：
 
-`_warning`、`_needs_backfill`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`knowledge_backlog`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
+`_warning`、`_needs_backfill`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`knowledge_backlog`、`syllabus_ids`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
 
 **读取几个已知字段时直接读 JSON 即可，无需加载 metadata.md。** 遇到以下情况才读：新建 metadata、写 `continuity` / `course_plan`、或文件缺失/损坏需要自愈。
+
+**知识点账本 `syllabus.json`**（与 `metadata.json` 并列）：课程承诺讲的每个知识点一条记录，六种状态 `planned` / `queued` / `taught` / `self-study` / `dropped_by_user` / `duplicate`，**状态改变时改字段、永不删除条目**；`knowledge_backlog` 是其中 `queued` 条目的投影，`metadata.syllabus_ids` 是它的 ID 镜像（用来发现被整条删掉的条目）。生成时创建，续写/收尾维护，复习与列表只读。规范见 [references/knowledge-ledger.md](references/knowledge-ledger.md)。
+
+**检查脚本（`scripts/`，纯标准库 Python 3）**：`ledger_check.py`（账本对账）、`part_lint.py`（单个 part 结构检查）、`trial_run.py`（交付前试跑）。写作型操作有 shell 时必须跑，回执里的数字粘贴脚本输出；没有 shell 时按 `knowledge-ledger.md`「人工核对清单」核对。
 
 **任何字段缺失都必须可降级运行**——按 metadata.md 的规则推断，并在本次写回时补上，绝不因缺字段中止操作。
 
@@ -175,6 +180,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 - `verified` → 验证通过后由 verify 写入；
 - `completed` → 收尾完结（`/lathe 续写 收尾 <slug>`）后写入，表示课程已达成学习目标并体面结束；
 - **`completed` 可被撤销：** 用户对已完结课程再次续写（写入任何新的常规部分）时，`status` 重置为 `unverified`——继续学习意味着课程重新开放。**复习不改变 status**。
+- **提问勘误：** `/lathe 提问` 发现错误、用户显式选择「确认修改」后，原地修正正文，`verified` 改回 `unverified`（`completed` 保持）；选「只记勘误」不改 status（见 [references/ask.md](references/ask.md)）。
 
 ## 验证状态横幅（part 顶部）
 
@@ -199,7 +205,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 - 旧 part 没有横幅：verify 在失败/跳过时可以插入；通过时不添加。
 - 增量复用跳过（`skipped_reuse`）的 part 不修改横幅。
 - **写入顺序：** verify 必须先更新横幅，再写 `verify-result.json` 的 `checked_at`；否则 part 的 mtime 会晚于 `checked_at`，下次增量复用会误判为“内容已变更”。
-- **写入边界：** verify 只能替换/移除 `lathe:verify-status` 标记块，不能改其他正文；generate/extend 只插入未验证态，不写通过/失败态。
+- **写入边界：** verify 只能替换/移除 `lathe:verify-status` 标记块，不能改其他正文；generate/extend 只插入未验证态，不写通过/失败态；ask 只在用户确认勘误并原地修正后把横幅换回未验证态。
 - **冲突保护：** 发现多个标记块、嵌套或缺少 `end` 时停止写入该 part，报告冲突；不要猜测替换。
 
 ## 教程语言
@@ -216,4 +222,4 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 ## 版本
 
-**技能版本：v0.5.5**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）
+**技能版本：v0.6.0**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）

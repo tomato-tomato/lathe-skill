@@ -1,17 +1,17 @@
 ---
 name: metadata
-description: Lathe metadata.json 完整结构、字段语义、continuity 摘要规范与自愈协议
+description: Lathe metadata.json 完整结构、字段语义、continuity 摘要规范与自愈协议（账本规范见 knowledge-ledger.md）
 ---
 
 # metadata.json 规范
 
-本文件是 `metadata.json` **完整结构与自愈协议**的单一事实源。SKILL.md 只保留字段速查与 status 状态机。
+本文件是 `metadata.json` **完整结构与自愈协议**的单一事实源；知识点账本 `syllabus.json` 的规范在 `knowledge-ledger.md`。SKILL.md 只保留字段速查与 status 状态机。
 
 **何时读取本文件：**
 
 | 场景 | 是否需要 |
 |------|----------|
-| 新建 metadata（**生成**） | ❌ **不读**——`generate.md`"写完之后"已内联 JSON 骨架与字段表 |
+| 新建 metadata 与账本（**生成**） | ❌ **不读**——`generate.md`"写完之后"已内联 JSON 骨架与字段表 |
 | 新建 metadata（扫描登记、自愈重建） | ✅ 必读 |
 | 写入 `continuity` 摘要、`course_plan` 或 `changed_interfaces`（续写、收尾） | ✅ 必读 |
 | 只读取几个已知字段（提问、列表、验证、标签） | ❌ 按字段名直接读 JSON 即可 |
@@ -56,9 +56,11 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
       "text": "<归一化后的知识点，≤60 字>",
       "from": "<来源，如 user-list-2026-10-23>",
       "plan_ref": 3,
-      "priority": "core"
+      "priority": "core",
+      "merged_ids": []
     }
   ],
+  "syllabus_ids": ["<syllabus.json 中出现过的全部 id，按字母序>"],
   "style_anchor": "<主锚点作者 id，如 nystrom>",
   "repo": "<远程 URL 或空>",
   "repo_branch": "<分支或空>",
@@ -101,7 +103,8 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `topic_novelty` | 生成时确认（可按 `experience_level` 推断） | 三档枚举，驱动配额矩阵（检索预算、地基章节、标注、概念锚定）。**续写读取，不重新询问**；缺失时按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent` |
 | `course_plan` | 生成时初始化；续写时维护 | 3-12 项课程路线图，每项 `{part, title, goal, prerequisites}`。part-01 完成第 1 项；续写优先按下一项推进，用户指导可覆盖。**它是 metadata 字段，不是 `index.md`** |
 | `changed_interfaces` | 生成时初始化/写入；续写时维护 | 跨部分活跃接口变更清单；按符号记录，最多 8 条；字段 `file` / `symbol` / `from` / `to` / `call_sites` / `supersedes` / `part`；超出或同符号被替代时归档到 `research.md`。无变化时为空数组 |
-| `knowledge_backlog` | 生成时初始化；续写时维护 | **用户列出但还没写进任何部分的知识点队列**（0.5.5 新增）。每项 `{id, text, from, plan_ref, priority}`；**最多 14 条**（= 2 个 Part 的量）、每条 `text` ≤60 字；`plan_ref` 指向 `course_plan` 的第几项（无归属写 `null`）；`priority` 取 `core`（教程承诺）或 `self-study`。先进先出，讲完即删；触到上限时走「积压三选一」（见 writing-core.md）。无内容写 `[]` |
+| `knowledge_backlog` | 生成时初始化；续写时维护 | 账本 `queued` 条目的投影（以 `syllabus.json` 为准）：已承诺要讲、被名额挤出的知识点队列。每项 `{id, text, from, plan_ref, priority, merged_ids}`；最多 14 条（闸门选 ① 时按新增 Part 上调）、`text` ≤60 字、`priority` 固定 `core`（自学条目只在 `research.md`）、`merged_ids` 可省略。先进先出，讲完从数组移除（账本里记 `taught`）。无内容写 `[]`；旧数据里 `priority: "self-study"` 的条目下次写回时迁到 `## Self-study Backlog`。来源、闸门、去重规则见 knowledge-ledger.md |
+| `syllabus_ids` | 生成时初始化；每次写账本时同步 | 账本 ID 镜像：`syllabus.json` 出现过的全部 `id`，按字母序、只增不删，用来发现被整条删掉的账本条目（knowledge-ledger.md 不变量 6）。旧教程在建账本那次写回补上 |
 | `style_anchor` | 生成时选定 | 风格标杆主锚点 id。续写沿用，避免重复加载 style-benchmarks.md |
 | `continuity` | 续写/收尾每次更新 | **续写连续性摘要**，见下方专节 |
 | `local_project_path` | 续写时填写 | 已有值时续写只做确认，不从零询问 |
@@ -135,7 +138,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `metaphor` / `metaphor_retired` | 控制性隐喻及是否已明确告别。已告别则续写不再重启该隐喻 |
 | `covered_concepts` | 已讲透的概念清单——续写据此避免重复教学，也是 `[!RECALL]` 的取材池。**只追加、不合并、不删除**，每项 ≤40 字 |
 | `open_threads` | 已提出但尚未展开的问题/伏笔（最多 10 条，每条 ≤80 字）——续写优先回收；已解决/溢出时移到 `research.md` 的 `## Open Threads Archive`，不删除 |
-| `exercise_carry` | 本部分练习的承接分流结果（0.5.5 新增）：`{integrated: [], chapter: [], deferred: []}`，各 ≤3 条、每条 ≤40 字。`integrated` = 已融进某条知识点；`chapter` = 已进承接章节；`deferred` = 顺延（同时进 `knowledge_backlog`）。续写读它决定下一部分怎么接；讲透后从对应数组移除并追加进 `covered_concepts` |
+| `exercise_carry` | 本部分练习的承接分流结果（0.6.0 新增）：`{integrated: [], chapter: [], deferred: []}`，各 ≤3 条、每条 ≤40 字。`integrated` = 已融进某条知识点；`chapter` = 已进承接章节；`deferred` = 顺延（同时进 `knowledge_backlog`）。续写读它决定下一部分怎么接；讲透后从对应数组移除并追加进 `covered_concepts` |
 | `next_hook` | 最后一部分"接下来"指向的方向——这就是下次续写的默认任务（≤200 字） |
 | `part_titles` | 文件名 → 一级标题映射。让 list、复习、收尾无需打开文件即可获得标题 |
 | `updated_through` | 摘要覆盖到哪个部分——新鲜度判定依据 |
@@ -167,7 +170,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 
 ### research.md（可选归档文件）
 
-当 `changed_interfaces` 超出活跃上限、同一符号被替代、`open_threads` 已解决/溢出，或有知识点被降级为自学时，在教程目录创建或追加 `research.md`，使用三个固定小节：
+当 `changed_interfaces` 超出活跃上限、同一符号被替代、`open_threads` 已解决/溢出、`covered_concepts` 接近索引上限、有知识点被降级为自学，或提问（ask）确认了一条勘误时，在教程目录创建或追加 `research.md`。**固定小节共五个，按需出现、顺序如下**（没有内容的小节不必写出）：
 
 ```markdown
 ## Changed Interfaces Archive
@@ -187,12 +190,24 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 - 问题：<原问题>
 - 备注/来源：<可选>
 
+## Covered Concepts Archive
+
+- <概念>（讲于 `part-NN`，<日期> 从 continuity 归档）
+
 ## Self-study Backlog
 
-- <知识点>（来自 <part-NN> 的用户清单，<日期> 降级）
+- **<id>** <知识点>（来自 <part-NN> 的用户清单 / 练习，<日期> 降级；原因：<闸门选 ② / 收尾门禁>）
+
+## Errata
+
+- <日期> `part-NN` §<章节>：<原文要点> → <修正后>（原因：<一句话>；处理：原地修正 / 只记勘误，见 part-MM 回指）
 ```
 
-**`## Self-study Backlog` 的语义（0.5.5 新增）：** 积压触到上限（14 条）后，被降级的条目放这里。**教程不承诺讲它们**，但内容留档；用户想捡回来时说「把自学清单里的 X、Y 讲掉」即可重新入队。它不是 `knowledge_backlog` 的副本——同一条只能出现在一边。
+**`## Covered Concepts Archive` 的语义：** `covered_concepts` 接近索引硬上限时，把不再被 `[!RECALL]` / 续写引用的旧概念移到这里；**它们仍算已讲**，复习、收尾、去重都要读这一节。
+
+**`## Self-study Backlog` 的语义（0.6.0 新增）：** 只有用户在闸门里**显式选 ②**、或收尾门禁里显式选择降级的条目才放这里，**必须保留原 ID**（复习与收尾按 ID 列出）。**教程不承诺讲它们**，但内容留档；用户想捡回来时说「把自学清单里的 X、Y 讲掉」即可按原 ID 重新入队。它不是 `knowledge_backlog` 的副本——同一条只能出现在一边。
+
+**`## Errata` 的语义：** 提问（ask）发现教程有误、经用户确认后的处理记录（无论原地修正还是只记勘误）。续写时读它：「只记勘误」的条目要在下一部分的 `> [!RECALL]` 或相关章节用一句话更正。
 
 归档文件不是必需的；没有需要归档的内容时不要创建。`research.md` 也不替代 `metadata.json` 的活跃清单。
 
@@ -206,6 +221,12 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 - **续写时：** 优先按下一项推进；写前核对最后一部分的“下一部分起始状态”，确认本部分接得上；用户指导可覆盖，此时更新路线图并说明偏离原因。
 - **旧教程缺失时：** 首次续写从 `next_hook` / `part_titles` 补一份 3-12 项路线图，写入本次 metadata。
 - **收尾时：** 保留已走路线，不删除；它不是完成度判定依据（`goal` 才是）。
+
+---
+
+## syllabus.json（知识点账本）
+
+结构、书写格式、六种状态、不变量（含 `syllabus_ids` ID 镜像）、读写分工、旧教程回填与损坏恢复，统一见 `<SKILL_DIR>/references/knowledge-ledger.md`「1. 账本」。本文件只负责 `metadata.json` 里与它相关的两个字段：`knowledge_backlog`（`queued` 的投影）与 `syllabus_ids`（ID 镜像）。
 
 ---
 
@@ -224,7 +245,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
    - `experience_level` → 从正文类比深度推断；`topic_novelty` → 按 `sources` / `covered_concepts` 覆盖度推断，默认 `adjacent`；`style_anchor` → 从写作节奏推断；
    - `course_plan` → 从 `parts`、各部分一级标题与"接下来"提炼 3-12 项；无法提炼时留空数组；
    - `changed_interfaces` → 空数组；旧教程的接口变更无法可靠推断，不强行回填；
-   - `knowledge_backlog` → **空数组**（未讲的知识点无法从正文可靠推断；若某部分「本部分不覆盖」里点名了顺延条目，可作为线索列出并写入 `_needs_backfill`）；
+   - `knowledge_backlog` → **若 `syllabus.json` 存在且可解析，按其中 `status: queued` 的条目重建**（这是账本独立成文件的主要收益）；账本也不存在时写空数组（未讲的知识点无法从正文可靠推断；若某部分「本部分不覆盖」里点名了顺延条目，可作为线索列出并写入 `_needs_backfill`）；
    - `_needs_backfill` → 记录 `changed_interfaces`、`knowledge_backlog`、`open_threads_archive` 等无法可靠推断的字段；用户补上后从数组移除；
    - `continuity` → 按上方字段语义从正文提炼（含 `open_threads`，从各部分"接下来"的未决问题提取；`exercise_carry` 从最后一部分的「练习承接」行推断，推不出则三个数组都空；归档内容无法可靠推断，留空）；
    - `voice` → 默认 `plainspoken`（正文不可判定）；`status` → `unverified`；
