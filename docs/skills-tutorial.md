@@ -401,7 +401,7 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 
 5. **确定部分编号** — 自动递增（如已有 `part-01.md`，下一个是 `part-02.md`；已有复习材料时在其最大编号后递增）
 6. **写入新部分** — 在 H1 之后写入“未验证”状态横幅，然后遵循完整的教程结构，以 `> [!RECALL]` 间隔检索开头；并在 `## 接下来` 前插入 **`## 目标达成回顾`** 小节：陈述原定学习目标、已覆盖/未覆盖内容、达成结论——由你自行判断继续延伸还是收尾完结；写完执行交付前自检
-7. **更新 metadata.json** — 追加新部分到 `parts` 数组，追加新来源，**增量更新 `continuity` 摘要**（下次续写的成本基础，不可省；总量 1200 字软上限 / 2000 字硬上限是索引预算，不是正文预算，`covered_concepts` 只追加不合并，`open_threads` 每条 ≤80 字，已解决/溢出归档到 `research.md`），同步更新 `course_plan` 与 `changed_interfaces`，`lathe_version` 更新为当前技能版本，`status` 重置为 `unverified`（若课程已完结，此操作自动撤销完结、重新开放）
+7. **更新 metadata.json** — 追加新部分到 `parts` 数组，追加新来源，**增量更新 `continuity` 摘要**（下次续写的成本基础，不可省；索引预算 2200 字软 / 3000 字硬，须先守住各字段条数上限——`covered_concepts` 留最近 24 条、`open_threads` 8 条、`fixed_numbers` 18 项、`part_titles` 最近 8 个部分；`covered_concepts` 只追加不合并，已解决/溢出归档到 `research.md`；超出只归档索引字段、不压缩正文，写回后跑 `ledger_check.py <教程目录> --continuity` 实测），同步更新 `course_plan` 与 `changed_interfaces`，`lathe_version` 更新为当前技能版本，`status` 重置为 `unverified`（若课程已完结，此操作自动撤销完结、重新开放）
 8. **报告完成** — 结果最前面是积压对账等式（`上次 a + 新入 b − 本次讲 c − 降级 e = 现在 f`）和**覆盖回执**（每个知识点讲在哪一节、哪些顺延、去重了什么、计划章数 / 实写章数）；写前计划里的每一条都必须在回执里有着落，对不上的 AI 必须补写或入队后才交付。随后告知你如何查看和验证
 
 ### 目标达成与收尾完结
@@ -412,7 +412,7 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 /lathe 续写 收尾 <slug>
 ```
 
-收尾模式生成一个**总结部分**：全课程逐部分回顾、知识图谱（Mermaid）、目标对照、练习方向、寄语，以及一段回顾自检问题。总结里还会单列**未讲清单**（谁没讲、为什么、想学时怎么捡回）。
+收尾模式生成一个**总结部分**，固定七个小节：`全课程回顾`（逐部分一句话）、`知识图谱`、`目标对照`、`未讲清单（按 ID）`、`回顾自检`（3–5 个贯穿全课程的问题，**代替** `## 检查点`）、`练习方向`、`寄语`。未讲清单按账本 ID 列出所有不是 `taught` / `duplicate` 的条目（谁没讲、为什么、想学时怎么捡回）。总结部分**不写** `## 检查点`、`## 你将构建什么`、`## 前置条件`、`## 来源`、四个契约行（没有下一部分可交接，硬写就是假契约）与**验证状态横幅**（它没有 runnable、永不参与验证）。`part_lint.py --kind finish` 按这张表检查，写了横幅会直接报错。另注意：`plan_ref` / `course_plan` 的 `part` 数的是**第几个教学部分**，不含复习材料与总结部分——总结会占用一个文件名编号但不算一个教学部分，走 ④ 时末尾要写清「下次续写新建 `part-(NN+1).md`，补的是路线图第 k 项」。
 
 收尾的第一件事就是这道**门禁**，而且它排在读取正文之前——门禁只需要 `metadata.json` + `syllabus.json` + `research.md`（约 22 KB），而收尾取材要读最后一部分全文（实测 137–182 KB），先判门禁可以避免被拒绝时白付读取成本。判据：账本里不能还有 `queued`（欠着的）或 `planned`（大纲还没轮到的）条目，除非每一条都已由你显式降级到 `research.md` 的 `## Self-study Backlog`；`course_plan` 的每一项都必须有对应的**常规**部分。任一条不满足时，AI 按 `ledger_check.py <教程目录> --finish` 把缺口分成两类，**处置完全不同**：
 
@@ -421,7 +421,7 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 | **A 类真欠账** | `queued`（顺延未还）+ 已承诺未兑现（上一部分答应「以后会讲」、对应部分却已写完的条目） | ① 补写 K 个 Part；② 逐条降级到自学清单；③ 强制完结 |
 | **B 类未开工路线项** | 其余 `planned`——`course_plan` 里你还没打算开工的项（「路线图悬挂项」与它是同一件事，不重复计） | **④ 按现状完结（默认）**：保留 `planned`、不改状态、不进自学清单，总结的「未讲清单」如实列出。也可以选 ① / ② / ③ |
 
-只有 A 类非空时才逼你三选一；A 类为空、只剩路线没走完时默认走 ④——**目标已达成但路线未走完是正常状态，不会被当成欠账**。任一情况下，**你确认之前都不读正文、不写总结、不会把 `status` 置为 `completed`**。门禁通过后 `status` 标记为 `completed`，`/lathe 列表` 中显示 ⭐ 已完结。
+只有 A 类非空时才逼你三选一；A 类为空、只剩路线没走完时默认走 ④——**目标已达成但路线未走完是正常状态，不会被当成欠账**。任一情况下，**你确认之前都不读正文、不写总结、不会把 `status` 置为 `completed`**。取不到你的回复时（无人值守、批量脚本）就停在门禁、把缺口与选项原文输出即可——**这是预期行为，不是失败**，技能不会为此新增状态字段，也不会先写个草稿。此外收尾的加载顺序是「先只读 `extend.md` 的收尾节 + 教程的 metadata / 账本把门禁判完」，门禁拒绝时不会再白读约 63 KB 的共享规则文件与 180 KB 的正文。门禁通过后 `status` 标记为 `completed`，`/lathe 列表` 中显示 ⭐ 已完结。
 
 > 完结不是永久的：之后直接 `/lathe 续写 <slug>` 即可重新开放课程（`status` 自动重置）；`/lathe 复习 <slug>` 则不会改变完结状态。
 
@@ -458,6 +458,8 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 - **学习目标回顾** — 对照 `goal` 说明已建立的能力；
 - **还没讲到的（按 ID）** — 有知识点账本时，按 `syllabus.json` 列出所有还没讲的条目（欠着的 `queued` → 大纲还没轮到的 `planned` → 你选择自学的 `self-study` → 你删掉的 `dropped_by_user`），写清为什么没讲、计划何时讲，末尾附账本各状态条数；旧教程没有账本时按 `knowledge_backlog` 与自学清单列出；全部讲完时明确写「无」，不省略；
 - **还可以继续深入的方向** — 3-5 个延伸方向，想继续时直接 `/lathe 续写 <slug>`。
+
+**读取成本（v0.6.0 改为两段式）**：正文不再整篇读入——第 1 段只取**骨架**（标题行、四个契约行、`你将构建什么` / `检查点` / `目标达成回顾` / `接下来` 四节全文、其余小节标题后 3 行），第 2 段只为「代表性片段」**定点读取**（先定位围栏行号，再读那 20–60 行）。三种情况必须回读整节：骨架说不清这节做了什么、需要的关键数字不在 `fixed_numbers` 与检查点里、摘录和原文对不上。3 个部分的真实课程实测：正文 182 KB → 骨架 27 KB（**15%**）+ 片段 3.5 KB，复习操作总读取 **243,718 → 约 92 KB（−62%）**。**兜底是刚性的：不跑 `part_lint.py --kind review` 的摘录保真校验，就不许用两段式读取，宁可全读。**
 
 复习会读 `knowledge_backlog`、`continuity.exercise_carry`，以及 `research.md` 的 `## Open Threads Archive`、`## Changed Interfaces Archive`、`## Self-study Backlog`、`## Covered Concepts Archive`——**归档过的概念仍然算在覆盖范围内**，不会因为索引瘦身而从复习里消失。复习材料计入 `parts` 但不参与验证（`/lathe 验证` 会跳过 `-review` 文件），也**不写验证状态横幅**（它永远不会被验证），`/lathe 列表` 中标注 *（复习）*。
 
@@ -906,7 +908,7 @@ AI 会一次性展示全部结果（不逐条询问），经你确认后才写�
 
 > 💡 **成本约束：列表绝不读取 `part-NN.md` 的全文。** 它只需要每个部分的一级标题，所以优先用 `metadata.json` 的 `continuity.part_titles` 映射（零文件读取），映射缺失时用 `grep` 只取标题行。否则一个多课程目录的正文动辄数十万字符。
 
-**内容变更检测：** 若某 part 在 `verify-result.json` 中为 `passed`，但该 part 文件的修改时间晚于 `checked_at`，列表会标记 **“内容已变更，需重新验证”**，不再显示 `passed`。只取文件 mtime，不读正文；`-review` 复习材料不参与。逐部分状态还会显示 `passed` / `failed` / `skipped` / `not_run`。若 `changed_interfaces_snapshot` 与当前 `metadata.changed_interfaces` 不一致，也会标记 **“接口已变更，需重新验证”**。
+**内容变更检测：** 若某 part 在 `verify-result.json` 中为 `passed`，但该 part 文件的修改时间晚于 `checked_at`，列表会标记 **“内容已变更，需重新验证”**，不再显示 `passed`。只取文件 mtime，不读正文；`-review` 复习材料不参与。逐部分状态显示 `✅ passed` / `❌ failed`（附失败步骤）/ `⏭️ skipped`（附原因）/ `⏭️ not_run` / `—（复习材料不参与验证）`；条目里带 `historical_steps` 时另加一句「其中 N 组检查点已按 `changed_interfaces.supersedes` 记为历史预期」，带 `fixes` 时附「验证中做过 N 处修正」——**被登记作废的检查点组是跳过的，不是跑过的**，不显示出来你会以为整部分干净通过。若 `changed_interfaces_snapshot` 与当前 `metadata.changed_interfaces` 不一致，也会标记 **“接口已变更，需重新验证”**。
 
 **异常提示（只提示，不写入）：**
 
@@ -937,7 +939,7 @@ AI 会一次性展示全部结果（不逐条询问），经你确认后才写�
 技能版本：v0.6.0
 ```
 
-> **积压行**只在 `knowledge_backlog` 非空时显示（`n` = 总条数，`m` = 其中 `priority: core` 的条数），只读 metadata、不读正文；为空时整行省略，不显示「积压：0 条」。单教程详情（`/lathe 列表 <slug>`）另外显示一行**知识点账本**统计：`账本：taught a · queued b · planned c · self-study d · dropped e · duplicate f（共 n 条）`；账本与积压对不上时会提示。
+> **积压行**只在 `knowledge_backlog` 非空时显示（`n` = 总条数，`m` = 其中 `priority: core` 的条数），只读 metadata、不读正文；为空时整行省略，不显示「积压：0 条」。紧随其后还有一行**账本计数**：`账本：taught a · queued b · planned c（共 n 条）`——`planned` 是「路线图还欠几个 Part」的唯一可见指标，只显示积压会看不出课程还欠着正文部分；没有账本时显示「账本：未建立（下次续写会回填）」，与旧版投影并存时提示「积压来自 0.5.x 投影，建账后以账本为准」。单教程详情（`/lathe 列表 <slug>`）另外显示一行**知识点账本**统计：`账本：taught a · queued b · planned c · self-study d · dropped e · duplicate f（共 n 条）`；账本与积压对不上时会提示。
 
 **单教程详情：** 展示标题、主题、编程语言、正文语言、voice、部分列表（含逐部分验证结果）、锁定工具版本、验证结果等，并根据状态给出下一步建议（如未验证 → 提示可验证）。字段存在时还会展示学习目标（`goal`）、读者水平（`experience_level`）、风格锚点（`style_anchor`）、生成版本（`lathe_version`）、**积压条数与自学清单条数**，以及 `continuity` 摘要的新鲜度（落后时提醒：下次续写会先重建摘要，属一次性成本）。积压非空时，续写建议会优先说明「先还债」。
 
@@ -1198,7 +1200,9 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 | `updated_through` | 摘要覆盖到哪个部分——**新鲜度判定依据** |
 | `updated_at` | 最后一次写回 continuity 的时间；也用于 part mtime 的手工编辑检测，必须在所有 part 写入之后刷新 |
 
-**新鲜度规则：** `updated_through` 等于当前最后一个常规部分 → 摘要可信，续写只读它 + 最后一个部分；落后或缺失 → 全文读取一次并重建。**信任前先用文件 mtime 检查手工编辑：任何 part 的 mtime 晚于 `continuity.updated_at`，按重建处理；每 3 个常规部分（part-03/06/09…）做一次全读审计。** 摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；分字段上限：`controlling_example` ≤200 字、`next_hook` ≤200 字、`covered_concepts` 每项 ≤40 字、`fixed_numbers` 每个值 ≤40 字、`open_threads` 每条 ≤80 字。**宁可多存 200 字，也不要让下次续写重读全部部分。** 它是索引，不是缩写版教程；**这是索引预算，不是正文预算**，超出时归档/压缩索引字段，不压缩课程正文。
+**新鲜度规则：** `updated_through` 等于当前最后一个常规部分 → 摘要可信，续写只读它 + 最后一个部分；落后或缺失 → 全文读取一次并重建。**检查手工编辑看的是「part 的 mtime 是否晚于 `metadata.json` 的 mtime 超过 2 分钟」**，不是晚于 `continuity.updated_at`——教程被 `cp -R`、`git clone`、网盘同步、移动目录之后所有时间戳都变成同一时刻，按旧写法每次搬运都会误判成「手工编辑过」，把按需读取省下的正文成本全额收回（实测：一份拷贝出来的教程 3 个部分全部「晚于」6000 秒）。真正的编辑一定明显晚于 metadata。每 3 个常规部分（part-03/06/09…）另做一次全读审计。
+
+**索引预算必须是可达的（v0.6.0 修正）**：旧写法只给 1200 软 / 2000 硬加「每条 ≤N 字」，却没有限制条数，而 `covered_concepts` 只增不删——3 个部分实测 1969 字、6 个部分必然越界，等于写了一条不可能遵守的规则（真越界时的危险动作是回头压缩正文）。现在**先定条数上限，总量等于它们之和**：`covered_concepts` 索引里留最近 24 条（更旧的移到 `research.md` 的 Covered Concepts Archive，仍算已讲）、`open_threads` 8 条、`fixed_numbers` 18 项、`part_titles` 最近 8 个部分（更早的标题由 `/lathe 列表` 现取）、`exercise_carry` 三个数组各 ≤3、`controlling_example` / `next_hook` 各 ≤200 字；**总量 2200 字软 / 3000 字硬**。写回 `metadata.json` 后跑 `ledger_check.py <教程目录> --continuity`，它逐字段实测并点名该归档哪几条。超条数与超软上限都**不阻塞交付**，超硬上限才必须归档；**两种情况都不得用压缩正文解决**——宁可多存 200 字，也不要让下次续写重读全部部分。它是索引，不是缩写版教程。
 
 `open_threads` 超过 10 条或已解决时，移到教程目录下可选 `research.md` 的 `## Open Threads Archive`；归档内容写清问题、提出部分、状态、解决部分（如有）、备注/来源。归档不是删除。
 
@@ -1206,7 +1210,7 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 
 ### changed_interfaces 与 research.md
 
-`changed_interfaces` 是跨部分活跃接口变更清单，用来防止“某个部分改了签名，后续部分还按旧签名写”。它在 `metadata.json` 顶层，不占 `continuity` 的 1200/2000 索引预算。
+`changed_interfaces` 是跨部分活跃接口变更清单，用来防止“某个部分改了签名，后续部分还按旧签名写”。它在 `metadata.json` 顶层，不占 `continuity` 的 2200/3000 索引预算。
 
 ```json
 {
@@ -1266,9 +1270,12 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 
 ```bash
 python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-03.md          # 结构、契约四行、代码块类型、练习上限、实写章数
-python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-04-review.md --kind review  # 复习材料专用：六节齐全、覆盖全部常规部分、不查验证横幅
+python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-04-review.md --kind review  # 复习材料专用：六节齐全、覆盖全部常规部分、逐块校验摘录是否为原文子串、不查验证横幅
+python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-05.md --kind finish         # 总结部分专用：七节齐全，且拒绝检查点/契约行/验证横幅
 python3 <技能目录>/scripts/trial_run.py    <教程目录>/part-03.md --run    # 在临时目录逐块编译/运行 runnable 与 expected_failure
 python3 <技能目录>/scripts/ledger_check.py <教程目录> --receipt part-03.md  # 账本对账 + 打印「本部分覆盖」回执行
+python3 <技能目录>/scripts/ledger_check.py <教程目录> --finish       # 收尾门禁：缺口分 A/B 类；A 类非空时 exit 2（拒绝放行，等用户选）
+python3 <技能目录>/scripts/ledger_check.py <教程目录> --continuity   # 索引预算与条数上限实测 + 点名该归档哪几条
 
 # 两个结构类脚本都可加 --legacy（检查 0.6.0 之前写的历史部分时，0.6.0 新增约束降级为 ℹ️ 提示）
 # ledger_check.py 退出码：0 = 闭合，1 = 有不一致，3 = 还没有账本（由下一次续写建账）
