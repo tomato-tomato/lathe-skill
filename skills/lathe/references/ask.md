@@ -9,11 +9,22 @@
 
 解析 slug、部分（可选）和问题。中文关键词 `提问` 和英文关键词 `ask` 等价。
 
-**部分参数宽松匹配：** `part-01.md`、`part-01`、1 均接受，统一解析为 `part-NN.md`。**省略部分参数时**，根据问题内容在各部分中自动定位最相关的部分：先读 `metadata.json`，用 `parts` 列表与 `continuity.part_titles`（已有时无需打开文件）判断；`continuity.covered_concepts` 也能提示某个概念属于哪个阶段。仍无法判断时，用 `grep` 在各部分中检索问题里的关键词定位；还不行就列出部分列表让用户选择。**不要为了定位而逐个读完全部部分。**
+**部分参数宽松匹配：** `part-01.md`、`part-01`、1 均接受，统一解析为 `part-NN.md`。**省略部分参数时**，根据问题内容在各部分中自动定位最相关的部分：先按布局读取 metadata，用 `parts` 列表与 `continuity.part_titles`（已有时无需打开文件）判断；`continuity.covered_concepts` 也能提示某个概念属于哪个阶段，但知识点状态仍以 canonical ledger 为准。仍无法判断时，用 `grep` 在各部分中检索问题里的关键词定位；还不行就列出部分列表让用户选择。**不要为了定位而逐个读完全部部分。**
+
+## 布局解析
+
+按 `<SKILL_DIR>/SKILL.md` 的双布局规则先确定 `<COURSE_DIR>`，再由 metadata 位置一次性决定本操作使用的辅助文件：
+
+| 布局 | metadata | canonical ledger | research |
+|---|---|---|---|
+| 0.6.1 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/research.md` |
+| legacy 课程 | `metadata.json` | `syllabus.json` | `research.md` |
+
+不得按单个文件是否存在逐文件 fallback，也不得拼接两套布局。两处 metadata 同时存在或辅助文件混放时，列出冲突并停止写入。legacy 课程只在根目录旧布局原地兼容，绝不创建 `_lathe/`。后文的 metadata、canonical ledger、research 均指本表中当前布局对应的路径。
 
 ## 协议
 
-1. **定位并阅读目标部分。** 按 `<SKILL_DIR>/SKILL.md`"教程位置解析规则"找到该教程目录，阅读其中的 `<part-NN.md>`。回答时遵循教程的语言（`metadata.json` 的 `language` 字段；若 `metadata.json` 缺失，直接按部分文件的实际语言回答，并在末尾顺带提醒可按 `<SKILL_DIR>/references/metadata.md`"metadata.json 自愈"重建索引）。当问题跨部分或依赖更早的设置时，阅读同目录下的**相关**部分——连续性在这里同样重要，但只读确实相关的那几个，不是全部。
+1. **定位并阅读目标部分。** 找到课程目录并完成上述布局判定，读取当前布局 metadata 与 canonical ledger，再阅读其中的 `<part-NN.md>`。回答时遵循 metadata 的 `language` 字段；若 metadata 缺失，作为只读操作直接按部分文件的实际语言回答，并在末尾提醒可按 `<SKILL_DIR>/references/metadata.md` 的按布局自愈规则重建索引，不自行创建文件。当问题跨部分或依赖更早的设置时，阅读同目录下的**相关**部分——连续性在这里同样重要，但只读确实相关的那几个，不是全部。
 
 2. **回答要扎根于本教程的具体产物**——相同的控制性示例、相同的数字、教程使用的相同 voice。读者问的是*他们的*合成器 / *他们的*键值存储，而不是抽象的主题。不要从头重新教授整个主题。
 
@@ -38,30 +49,32 @@
 依据：<来源链接（官方一手来源优先）/ 编译错误 / 与 part-MM 的矛盾之处>
 原文：<要改的原文片段，原样摘录>
 修正：<修正后的片段>
-影响面：<这门课里仍含同一原文的全部位置，逐条列出：part-NN.md §X（第 n 行）、part-NN-review.md、interview.md、syllabus.json 的 at、research.md>
-后果：改正文后该部分需重新验证；<影响面含复习材料/面试文档时说明将做同样的最小替换>。
+影响面：<这门课里仍含同一原文的全部位置，逐条列出：part-NN.md §X（第 n 行）、part-NN-review.md、按 interview.md 规则解析出的面试文档、当前布局 canonical ledger 中对应的 at、当前布局 research>
+后果：改正文后该部分需重新验证；<标题变化会同步 canonical ledger 的对应 at；影响面含复习材料/面试文档时会做同一处摘录的最小替换>。
 
 请回复以下之一（只回复「好」「嗯」不算确认）：
-1. 确认修改 —— 原地修正 part-NN.md，并记入 research.md 的 Errata
-2. 只记勘误 —— 正文不动，记入 Errata，下一次续写在 RECALL 或相关章节更正
+1. 确认修改 —— 原地修正 part-NN.md，并记入当前布局 research 的 Errata
+2. 只记勘误 —— 正文不动，记入当前布局 research 的 Errata，下一次续写在 RECALL 或相关章节更正
 3. 不处理
 ```
 
 - **只有用户回复编号 `1` / `2` 或原样写出「确认修改」/「只记勘误」才执行**；其他回复（含「好」「可以」「嗯」）一律当作未确认，可再问一次，不得自行处理。
 - 宿主支持选择框（如 AskUserQuestion）时用选择框呈现这三项，不预选任何一项。
 - 一次回答发现多处错误时，逐条编号列出，允许用户只确认其中几条（如「确认 1、3」）。
-- **影响面必须实测得到**，不得凭记忆估计：有 shell 时 `grep -rn "<原文关键片段>" <教程目录>` 扫全部文件（含 `-review`、`interview.md`、`research.md`、`syllabus.json`）；没有 shell 时逐个文件读过去，并在确认块里写明是人工核对。
+- **影响面必须实测得到**，不得凭记忆估计：有 shell 时搜索课程正文与当前布局辅助文件，并按 `interview.md` 的三档规则另查实际面试文档路径；必须覆盖 `-review`、canonical ledger、research 和面试文档，但不得为搜索逐文件 fallback 到另一布局。没有 shell 时逐个读取这些已解析路径，并在确认块里写明是人工核对。
 - 已经在学、不想改原文的课程，建议用选项 2（正文冻结，更正写进后续部分）。
 
 **用户确认后的执行：**
 
 | 选项 | 写入 |
 |---|---|
-| 1 确认修改 | ① 只替换确认块里的「原文」片段，不顺手改其他内容、不改 voice 和结构；② 该部分的验证状态横幅换回「未验证」模板（`lathe:verify-status` 标记块，写明「勘误于 <日期>」）；③ `metadata.status` 为 `verified` 时改为 `unverified`（`completed` 保持不变）；④ 若修正涉及 `fixed_numbers` / `covered_concepts` 的措辞，同步更新这些字段；随后刷新 `continuity.updated_at`（这次修改是已知改动，不需要让续写按手工编辑重建）；⑤ 若修正动到了小节标题：把 `syllabus.json` 中 `at` 指向该章的条目**只改 `at` 的标题部分**（id、状态、其余字段一律不动——`ledger_check.py` 会按章号命中，但指针文字应当跟上）；⑥ 影响面里列出的 `-review` 材料与面试文档，做**同一处摘录的最小替换**（只换这一段，不重写、不调结构、不加新内容）；⑦ 追加一条到 `research.md` 的 `## Errata`（含影响面）；⑧ 复跑自检：`ledger_check.py <教程目录>` 必须 `exit 0`，改动落在代码块内时再跑 `part_lint.py` 与 `trial_run.py`，结果写进回执 |
-| 2 只记勘误 | 只追加一条到 `research.md` 的 `## Errata`，处理方式写「只记勘误」；不动正文、横幅和 `status` |
+| 1 确认修改 | ① 只替换确认块里的「原文」片段，不顺手改其他正文、不改 voice 和结构；② 该部分的验证状态横幅换回「未验证」模板（`lathe:verify-status` 标记块，写明「勘误于 <日期>」）；③ 当前布局 `metadata.status` 为 `verified` 时改为 `unverified`（`completed` 保持不变）；④ 若修正涉及 `fixed_numbers` / `covered_concepts` 的措辞，只同步这些直接派生缓存，随后刷新 `continuity.updated_at`；⑤ 若修正改动小节标题，只更新 canonical ledger 中真实指向该章的 `at` 标题：新课程修改 `_lathe/knowledge-points.md` 对应八列表格单元格里的 `at:part-NN.md#<标题>`，legacy 修改 `syllabus.json` 对应条目的 `at`；ID、状态与其他字段一律不动；⑥ 对影响面里列出的 `-review` 材料与实际面试文档，只做**同一处摘录的最小替换**，不重写、不调结构、不加新内容；⑦ 追加一条到当前布局 research 的 `## Errata`（含影响面）；⑧ 复跑自检：`ledger_check.py <COURSE_DIR>` 必须 `exit 0`，改动落在代码块内时再跑 `part_lint.py` 与 `trial_run.py`，结果写进回执 |
+| 2 只记勘误 | 只追加一条到当前布局 research 的 `## Errata`，处理方式写「只记勘误」；不动正文、canonical ledger、横幅和 `status` |
 | 3 不处理 | 不写任何文件 |
 
-`## Errata` 条目格式（`research.md` 不存在时创建它，小节顺序见 `metadata.md`）：
+标题未变化时，不改 canonical ledger。标题发生变化时也只改与已确认标题对应的 `at` 单元格/字段，不增删知识点、不改变任何知识点状态。上述 metadata 缓存、复习材料、面试文档、ledger 指针与 Errata 都是确认修改的直接派生材料；除此之外不得扩大修改面。
+
+`## Errata` 条目格式（当前布局 research 不存在时只在其规定位置创建；legacy 不得创建 `_lathe/`；小节顺序见 `metadata.md`）：
 
 ```markdown
 ## Errata
@@ -73,7 +86,8 @@
 
 ## 边界
 
-- **默认只读、对话式。** 唯一的写入是上方「勘误确认」中**用户显式确认后**的处理；写入范围仅限：目标 `part-NN.md` 中被确认的那一处片段及其验证状态横幅、**影响面里同一处摘录**在 `-review` 材料与面试文档中的同样替换、`syllabus.json` 中受影响条目的 `at` 标题部分、`research.md` 的 `## Errata`、`metadata.json` 的 `status` / `continuity.updated_at` / 与修正直接相关的 `continuity` 字段。
-- **不做其他状态修改：** 不验证、不续写、不打标签、不增删知识点、**不改任何条目的 `status`**、不改 `knowledge_backlog`、`course_plan`、`parts`。（更新 `at` 的标题文字不算增删——它是勘误的必要连带修正，缺了它账本指针就断。）
+- **默认只读、对话式。** 唯一的写入是上方「勘误确认」中**用户显式确认后**的处理；写入范围仅限：目标 `part-NN.md` 中被确认的那一处片段及其验证状态横幅、影响面里同一处摘录在 `-review` 材料与实际面试文档中的最小替换、标题变化直接要求的 canonical ledger `at` 更新、当前布局 research 的 `## Errata`、当前布局 metadata 的 `status` / `continuity.updated_at` / 与修正直接相关的 `continuity` 缓存。
+- **不做其他状态修改：** 不验证、不续写、不打标签、不增删知识点、**不改任何知识点条目的 `status`**，不改 `course_plan` 或 `parts`。更新 `at` 的标题文字不算增删，只是已确认标题修改的必要派生修正。
+- **废弃镜像不参与本操作。** legacy metadata 中残留的旧点级镜像仅原样保留并忽略；不读取、不更新，也不把它们当作知识点或承诺来源。
 - **不需要 writing-core.md 或 style-benchmarks.md**——回答问题不是写教程，voice 照教程的 `voice` 字段语气作答即可；勘误也只做最小替换，不需要写作规则。
 - 保持回答针对本教程的具体产物，使用其 voice。

@@ -15,9 +15,16 @@
 
 ## 协议
 
-0. **解析教程位置。** 按 `<SKILL_DIR>/SKILL.md`"教程位置解析规则"找到该 slug 的实际目录。**若 `metadata.json` 缺失或损坏**，先执行 `<SKILL_DIR>/references/metadata.md`"metadata.json 自愈"，重建确认后再继续。
+0. **解析教程位置与布局。** 按 `<SKILL_DIR>/SKILL.md`“教程位置与双布局”找到该 slug 的课程根目录；正文始终位于根目录。先同时检查两处 metadata，再由位置一次性决定全部辅助文件：
 
-1. **吸收现有教程。** 先读 `metadata.json`，取 `voice`（复习材料沿用同一 voice）、`language`（保持同一正文语言）、`goal`（如有）、`continuity`（控制性示例与固定数字直接取自摘要，无需从正文重新提炼）、`knowledge_backlog` 与 `continuity.exercise_carry`（见下方「未讲条目」）。读取 `changed_interfaces`（如有）。**读取 `syllabus.json`（知识点账本，存在时）**——它是「哪些讲了、讲在哪，哪些还没讲」的权威记录。若教程目录存在 `research.md`，同时读取其中的 `## Open Threads Archive`、`## Changed Interfaces Archive`、**`## Self-study Backlog` 与 `## Covered Concepts Archive`**——前两节用于后续方向，后两节用于「整门课覆盖核对」与「已归档概念」；归档内容不是新教学内容，但**复习必须把它们算进覆盖范围**，否则长课程只能看到最近未被归档的概念。
+   | 布局 | metadata | canonical ledger | research |
+   |---|---|---|---|
+   | 0.6.1 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/research.md` |
+   | legacy 课程 | `metadata.json` | `syllabus.json` | `research.md` |
+
+   两处 metadata 同时存在，或辅助文件跨布局混放，列出冲突路径并停止；不得逐文件回退、拼接、迁移或移动文件。metadata 缺失/损坏时按 `<SKILL_DIR>/references/metadata.md` 的布局线索提出自愈位置，经用户确认重建后再继续。新布局缺 `_lathe/knowledge-points.md` 是错误；legacy 缺 `syllabus.json` 时报告 `知识表：未建立` 并停止生成复习材料，因为无法从 canonical points 计算覆盖情况。不得用 metadata 或 research 的旧点级镜像兜底。
+
+1. **吸收现有教程。** 只读当前布局 metadata，取 `voice`（复习材料沿用同一 voice）、`language`（保持同一正文语言）、`goal`（如有）、`continuity`（控制性示例与固定数字直接取自摘要，无需从正文重新提炼）与 `changed_interfaces`（如有）。读取当前布局 canonical ledger：新布局解析 `_lathe/knowledge-points.md` 固定表，legacy 解析 `syllabus.json`；它是「哪些讲了、讲在哪，哪些还没讲」的唯一权威记录。进度固定按 `taught / (taught + planned + queued)` 计算，未讲清单直接取所有不是 `taught` / `duplicate` 的 canonical points。当前布局 research 存在时，只读取 `## Open Threads Archive` 与 `## Changed Interfaces Archive` 作为方向线索；旧 research 中任何点级、自学或已讲镜像一律忽略，不迁移、不续写。
 
    然后**按两段式读取正文**（0.6.0 改，见下方成本实测）——复习材料要逐部分回顾并原样摘录，但「回顾」需要的只是骨架，「摘录」需要的只是每部分一段连续原文：
 
@@ -59,13 +66,13 @@
    列出各部分 `## 检查点` 的核心命令与预期输出（原样摘录），供读者在本地环境重新执行、确认手感仍在。
 
    ## 学习目标回顾（goal 缺失时本节仍保留，见下）
-   对照 `goal` 说明当前已建立的能力，以及尚未覆盖的部分（如有）。**`goal` 缺失时不省掉本节**：开头写「本课未记录学习目标（`goal` 缺失，可在下次写 metadata 时补）」，然后按「已建立的能力 / 还没讲到的」照常写。若 `changed_interfaces` 非空，列出仍未闭合的接口变更；若 `open_threads` / `research.md` 归档有未决问题，列出 1-3 个最重要的。
+   对照 `goal` 说明当前已建立的能力，以及尚未覆盖的部分（如有）。**`goal` 缺失时不省掉本节**：开头写「本课未记录学习目标（`goal` 缺失，可在后续允许补齐 metadata 的写操作中补）」，然后按「已建立的能力 / 还没讲到的」照常写。若 `changed_interfaces` 非空，列出仍未闭合的接口变更；若 `open_threads` / 当前布局 research 归档有未决问题，列出 1-3 个最重要的。
 
    ## 还没讲到的（按 ID）
-   **有账本时**：按 `syllabus.json` 列出所有不是 `taught` / `duplicate` 的条目，**四个状态组都要出现**（`queued` 欠着的 → `planned` 按大纲还没轮到的 → `self-study` 你选择自学的 → `dropped_by_user` 你删掉的），**某一组没有条目时写「无。」，不要整组省掉**（读者需要看见「这一类真的是空的」）。每条写一句「为什么没讲 / 计划何时讲（`plan_ref` 指向哪个 Part）」。`planned` 里若有 `promised_by`（更早部分的练习承诺过「以后会讲」），**单独标一句「这是 Part X 留下的承诺」**——它和普通「按大纲还没轮到」的性质不同，读者据此知道有账没还。末尾附一行账本条数，**六种状态全给（含 `taught` / `duplicate` 作分母）+ 合计**，只报未讲的两组会让覆盖度失去分母。**没有账本的旧教程**：按 `metadata.knowledge_backlog`（`core` 在前）与 `research.md` 的 `## Self-study Backlog` 列出，并提示下次续写会建立账本。**全部已讲时写「无——所有列入清单的知识点都已讲完」**，不要省略本节。这一段是「覆盖度」的唯一可见账本，读者据此判断这门课是否完整。
+   直接按当前布局 canonical ledger 列出所有不是 `taught` / `duplicate` 的条目，**四个未讲状态组都要出现**（`queued` 欠着的 → `planned` 按路线还没轮到的 → `self-study` 用户选择自学的 → `dropped_by_user` 用户删去的），**某一组没有条目时写「无。」，不要整组省掉**。每条保留 ID，并按知识表中的计划 Part、承诺来源/位置与备注说明「为什么没讲 / 计划何时讲」；存在 `promise:` 或 legacy 等价承诺字段时，单独标一句「这是 Part X 留下的承诺」。末尾显示 `进度：taught / (taught + planned + queued)` 的数量与百分比，并按固定顺序列出 `planned`、`queued`、`taught`、`self-study`、`dropped_by_user`、`duplicate` 六态计数及合计。**全部已讲时写「无——所有列入清单的知识点都已讲完」**，但仍保留四组、进度与六态统计。这一段不从 metadata、research 或正文重建点级清单。
 
    ## 还可以继续深入的方向
-   基于课程内容、`continuity.open_threads`、`next_hook`、`knowledge_backlog` 头部以及 `research.md` 的归档线索，给出 3-5 个延伸方向：
+   基于课程内容、`continuity.open_threads`、`next_hook`、canonical ledger 中的 `queued` / `planned` 条目以及当前布局 research 的非点级归档线索，给出 3-5 个延伸方向：
    每个方向一段话——是什么、为什么值得、从哪个部分的基础出发。
    末尾说明：想继续时调用 /lathe 续写 <slug>（可附带方向指导）。
    ```
@@ -81,15 +88,12 @@
 它检查六个必备小节齐全与顺序、H1 格式（「截至 part-NN」必须是**常规部分**）、「逐部分回顾」是否覆盖全部常规部分、摘录代码块是否保留原文的类型标注、**每个围栏块是否为某个常规部分原文的连续子串（摘录保真）**，以及教学标注（PREDICT / ASIDE 应为 0，RECALL ≤1）；**不查验证状态横幅、检查点与练习**——复习材料永远不会被验证。**不跑** `ledger_check.py` 与 `trial_run.py`（复习不写账本、不产生新代码）。
 结果写进本次播报的一行：**复习检查：** 六节 ✅ · 覆盖 N/N 个常规部分 ✅ · 摘录标注 ⚠️ k 处。
 
-   - **接口变更要不要写「仍未闭合」（0.6.0 定义）**：`changed_interfaces` 里的条目满足「`supersedes` 为空 **且** 其后各部分的正文与 `research.md` 都没有回指/作废它」时，算**未闭合**，复习材料要列出；已经登记 `supersedes` 或已被后续部分改回的，算闭合，不列。此判据只在本文件内定义，复习**不需要**为此去读 `metadata.md`。
+   - **接口变更要不要写「仍未闭合」**：`changed_interfaces` 里的条目满足「`supersedes` 为空 **且** 其后各部分的正文与当前布局 research 都没有回指/作废它」时，算**未闭合**，复习材料要列出；已经登记 `supersedes` 或已被后续部分改回的，算闭合，不列。此判据只在本文件内定义，复习**不需要**为此去读 `metadata.md`。
 
-4. **更新 `metadata.json`：**
-   - 将复习材料文件名追加到 `parts` 数组；
-   - `model` = 本次实际执行的宿主名、`lathe_version` = 当前技能版本；**值与原字段相同时什么都不改**——这是 no-op，不算遗漏，也不要为了「表示我跑过了」重写一遍；
-   - **`continuity` 只更新 `part_titles`（加入本复习材料）与 `updated_at`**——`updated_through` **不变**（它追踪常规教学进度，复习不推进进度）；`covered_concepts`、`next_hook` 等一律不动；
-   - `goal`、`language`、`style_anchor`、`experience_level` 等字段缺失时可顺带补上（推断依据来自已读的正文）；
-   - **`status` 不变**——复习不改变课程状态：`verified` 保持 `verified`，`completed` 保持 `completed`（复习不等于重新开放课程；只有续写新内容才会撤销完结，见 `<SKILL_DIR>/SKILL.md`"status 状态机"）；
-   - 写回文件。
+4. **只更新当前布局 metadata 的 Part 索引：**
+   - 新布局写 `_lathe/metadata.json`，legacy 写根目录 `metadata.json`；不得在另一布局创建或写入 metadata。
+   - 将复习材料文件名追加到 `parts` 数组，并在原协议支持 `part_versions` 时写入 `part_versions["part-<NN>-review.md"] = "<当前技能版本>"`；已有未知字段原样保留。
+   - 除 `parts` / `part_versions` 外不更新其他 metadata 字段；尤其不修改 `status`、`continuity`、`model`、`lathe_version` 或任何点级镜像字段。复习不推进常规教学进度，也不重新开放已完结课程。
 
 5. **告诉用户**复习材料已生成——文件路径、建议的使用方式（先自测再重跑检查点），以及两个后续选项：
    - 状态尚好、想继续精进 → `/lathe 续写 <slug>`；
@@ -97,6 +101,7 @@
 
 ## 边界
 
-- 写入 `part-<NN>-review.md` 和更新 `metadata.json` 是唯一的文件写入操作；不编辑已有部分，**不写 `syllabus.json`**（复习只读账本）。
-- 不引入新教学内容，不做网络研究，不修改 `status`、`tags`、`tools`、`sources`。允许写入的 metadata 字段仅限：`parts`、`model`、`lathe_version`、`continuity.part_titles` / `continuity.updated_at`，以及**原本缺失**的 `goal` / `language` / `style_anchor` / `experience_level`（补齐，不覆盖已有值）。
+- 唯一写入是课程根目录的 `part-<NN>-review.md`，以及当前布局 metadata 的 `parts` / `part_versions`（原协议支持时）；不编辑已有部分，不写另一布局 metadata。
+- canonical ledger 全程只读：新布局绝不写 `_lathe/knowledge-points.md`，legacy 绝不写 `syllabus.json`；尤其不改变任何知识点状态。research 也只读。
+- 不引入新教学内容，不做网络研究，不修改 `status`、`tags`、`tools`、`sources`、`continuity` 或其他 metadata 字段。
 - 复习材料计入 `parts` 但**不参与验证**（verify 跳过 `-review` 文件），**也不写验证状态横幅**（它永远不会被验证）；后续常规续写的编号在所有部分（常规 + 复习）的最大编号上递增。

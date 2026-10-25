@@ -27,6 +27,17 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 - 作为**首个 token** 时（`/lathe 面试 <slug>`），**只有后跟一个已存在的 slug 才进入本模式**；否则视为主题——`/lathe 面试题生成器怎么做` 走正常生成；
 - 不确定时**先问**，不要默认进入面试模式。
 
+## 课程布局解析
+
+按 `<SKILL_DIR>/SKILL.md` 定位 `<COURSE_DIR>` 后，由 metadata 位置一次性决定课程辅助文件：
+
+| 布局 | metadata | canonical ledger |
+|---|---|---|
+| 0.6.1 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` |
+| legacy 课程 | `metadata.json` | `syllabus.json` |
+
+读取课程 metadata、知识点及进度时只使用当前布局对应路径。不得按单个文件是否存在逐文件 fallback，不得拼接两套布局；两处 metadata 同时存在或辅助文件混放时，列出冲突并停止写入。legacy 课程保持根目录旧布局，不迁移，也不创建 `_lathe/`。面试文档无论位于外部还是课程内，都不是 canonical ledger，不得反向成为知识点状态或课程进度来源。
+
 ## 路径解析
 
 面试文档位置记录在 `~/.lathe/config.json`，两个字段**均为可选**（缺失即走下一档，旧 config 无需迁移）：
@@ -44,9 +55,10 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 |------|------|----------|
 | 1 | `interview_paths[<slug>]` 存在 | `<该目录>/<slug>.md` |
 | 2 | `interview_base_path` 存在 | `<该目录>/<slug>.md` |
-| 3 | 都没有 | `<教程目录>/<slug>/interview.md` |
+| 3 | 都没有，0.6.1 新课程 | `<COURSE_DIR>/_lathe/interview.md` |
+| 3 | 都没有，legacy 课程 | `<COURSE_DIR>/interview.md` |
 
-**一个 slug 一个文档，文件名 = slug**（第 3 档落在教程目录内，故用 `interview.md`）。
+前两档外部路径规则不受课程布局影响。第三档才按 metadata 位置决定：新课程放 `_lathe/`，legacy 保持课程根目录；旧课程不得为面试文档创建 `_lathe/`。**一个 slug 一个文档**；前两档文件名为 `<slug>.md`，第三档固定为 `interview.md`。
 
 ## 位置确认（仅文档不存在时）
 
@@ -59,10 +71,10 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 ## 教学部分（单一事实源）
 
 ```
-教学部分 = metadata.json 的 parts 数组中的文件，且同时满足：
+教学部分 = 当前布局 metadata 的 parts 数组中的文件，且同时满足：
            ① 文件名不含 `-review`      （排除复习材料）
            ② 文件含 `## 检查点`        （排除收尾总结部分）
-回退：若按 ② 排除后集合为空（明显异常），退化为「仅按 ① 排除」。
+回退：若按 ② 排除后集合为空（明显异常），退化为「仅按 ① 排除」；这只是教学部分筛选回退，不是辅助文件路径 fallback。
 ```
 
 | 文件类型 | 是否产出面试分段 | 理由 |
@@ -119,26 +131,29 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 
 ## 协议
 
-```
-0. 解析教程位置；metadata.json 缺失/损坏 → 先走 metadata.md「metadata.json 自愈」。
-1. 读 metadata：title / goal / tools / repo / local_project_path / language /
-   topic_novelty / parts / continuity.part_titles / sources。
-2. 计算【教学部分】集合 T（见上）。
-3. 解析面试文档路径（三档）。
-4. 【仅当文档不存在】确认存储位置（见「位置确认」）。
-5. 解析已覆盖集合 C，计算遗漏集合 M。
-6. 【遗漏处理】按触发路径分派（见上表）。
-7. 文档不存在 → 按下方模板创建（含头部与两张固定表）。
-8. 确定本次目标集合，按 Part 编号升序排列；为空 → 告知「已是最新」并询问是否重写某个 Part。
-9. 逐个 Part 生成分段：
-   a. 读该 part 全文（整课程模式逐个处理）；
-   b. 提炼【课程】/【课程+延伸】要点；
-   c. 按检索预算做延伸研究，补【延伸】要点；
-   d. 每条要点标注课程出处；延伸要点附来源。
-10. 追加写入：新分段按 Part 编号升序插入文档末尾；
-    头部「本课程的进度」表逐行更新（各 Part 的要点数与状态）。
-11. 首次创建且位置 ≠ 第 2/3 档解析结果 → 写入 config 的 interview_paths[<slug>]。
-12. 告知用户：文档路径、本次新增/更新的 Part、要点条数与来源构成（课程 a · 课程+延伸 b · 延伸 c）；
+```text
+0. 解析教程位置并按 metadata 位置整体判定布局；metadata 缺失/损坏 → 走 metadata.md「按布局自愈」，不得为 legacy 创建 `_lathe/`。
+1. 只从当前布局读取 metadata：title / goal / tools / repo / local_project_path /
+   language / topic_novelty / parts / continuity.part_titles / sources。
+2. 读取当前布局 canonical ledger：新课程读 `_lathe/knowledge-points.md` 的八列表格，
+   legacy 读根目录 `syllabus.json`；知识点状态、已讲位置与课程进度均以它为准。
+3. 计算【教学部分】集合 T（见上），并按 ledger 的 taught/at（legacy 对应状态/at）关联各 Part；
+   面试文档中的分段与进度表只能表示“面试内容覆盖”，不能覆盖 ledger 状态。
+4. 解析面试文档路径（三档）。
+5. 【仅当文档不存在】确认存储位置（见「位置确认」）。
+6. 解析已覆盖集合 C，计算遗漏集合 M。
+7. 【遗漏处理】按触发路径分派（见上表）。
+8. 文档不存在 → 按下方模板创建（含头部与两张固定表）。
+9. 确定本次目标集合，按 Part 编号升序排列；为空 → 告知「已是最新」并询问是否重写某个 Part。
+10. 逐个 Part 生成分段：
+    a. 读该 part 全文（整课程模式逐个处理）；
+    b. 结合 canonical ledger 中该 Part 的已讲位置，提炼【课程】/【课程+延伸】要点；
+    c. 按检索预算做延伸研究，补【延伸】要点；
+    d. 每条要点标注课程出处；延伸要点附来源。
+11. 追加写入：新分段按 Part 编号升序插入文档末尾；
+    头部「本课程的进度」表逐行更新（各 Part 的面试要点数与文档覆盖状态，不是知识点状态）。
+12. 首次创建且位置 ≠ 第 2/3 档解析结果 → 写入 config 的 interview_paths[<slug>]。
+13. 告知用户：文档路径、本次新增/更新的 Part、要点条数与来源构成（课程 a · 课程+延伸 b · 延伸 c）；
     若用户选了"只写当前"，补一句缺口提示（"仍缺 Part 1–2，下次可补齐"）。
 ```
 
@@ -198,12 +213,14 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 **每条解答都标明「课程出处」**——回到课程对应章节回忆上下文，理解过的内容比背下来的记得久。
 ```
 
+「本课程的进度」表只记录面试文档覆盖了哪些 Part、各有多少条；它不是课程知识点进度，也不得据此改写 canonical ledger。知识点状态与进度始终从当前布局的 canonical ledger 读取。
+
 ### 每个 Part 的分段（每次追加一个）
 
 ````markdown
 # 第<中文数字>部分 · Part <阿拉伯数字>：<该 Part 一级标题>
 
-> **课程文件**：`<教程目录>/<slug>/part-<NN>.md`（<M> 行）
+> **课程文件**：`<COURSE_DIR>/part-<NN>.md`（<M> 行）
 > **本部分覆盖的章节**：《章节一》→《章节二》→《章节三》
 > **要点构成**：课程 <a> 条 · 课程+延伸 <b> 条 · 延伸 <c> 条
 
@@ -263,7 +280,7 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 - **每条要点必须有课程出处**。
 - **三态标注必须真实**：【课程】/【课程+延伸】/【延伸】。
 - **来源限定**：只从**教学部分**提取；复习材料、收尾总结部分、面试文档自身不作为来源。
-- **不改动**：不修改教程正文、`metadata.json`、`parts`、`status`、`tags`。
+- **不改动**：不修改教程正文、当前布局 metadata、canonical ledger、`parts`、`status` 或 `tags`。
 - **要点数量软引导**：参考 5–15 条/Part，按「面试官可能问、且值得深挖」取舍，**不设硬上限**。
 - **作用域自限**：本文件的研究/标注纪律**只约束面试文档**；不得据此修改或"顺手统一" `writing-core.md` 的研究预算与不变量。
 - **绝不静默漏 Part**：任何写入前先算 `M`；除整课程路径外，任何补写都须经用户确认；用户选"只写当前"后，缺口要在结果里提示并在下次再次提出。
@@ -279,6 +296,7 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 
 ## 边界
 
-- 唯一写入操作：创建/追加面试文档、更新 `config.json` 的 `interview_paths`。**不修改任何教程文件。**
-- **面试文档不是 part**：绝不写入 `metadata.json` 的 `parts`，绝不命名为 `part-NN*.md`——`verify` 因此不会尝试执行它，`list` 与续写的编号推导也不受影响。
+- 唯一写入操作：创建/追加面试文档、更新 `config.json` 的 `interview_paths`。**不修改任何教程正文、当前布局 metadata 或 canonical ledger。**
+- **面试文档不是 part，也不是知识点状态源**：绝不写入当前布局 metadata 的 `parts`，绝不命名为 `part-NN*.md`；其覆盖表不能作为 taught/self-study 等状态或课程进度证据，`verify`、`list` 与续写编号也不从中推导。
+- 课程内 fallback 只写当前布局规定的位置；legacy 不创建 `_lathe/`。
 - 保持会话。
