@@ -1,193 +1,158 @@
 ---
 name: lathe
-version: 0.6.0
-description: 按需生成、续写、复习、验证、提问动手实践型技术教程。当用户说 /lathe 并附带主题时使用，如 "/lathe 用 Zig 构建数字合成器"；也处理续写(extend)、收尾完结(finish)、复习(review)、验证(verify)、提问(ask)、打标签(tag)、创建语气(voice)、扫描登记(scan)和列出教程(list)等所有教程相关操作。支持中文和英文关键词。
+version: 0.6.1
+description: 按需生成、续写、复习、验证、提问动手实践型技术教程。当用户说 /lathe 并附带主题时使用，如 "/lathe 用 Zig 构建数字合成器"；也处理续写(extend)、收尾完结(finish)、复习(review)、验证(verify)、提问(ask)、面试(interview)、标签(tag)、语气(voice)、扫描(scan)和列表(list)等教程操作。支持中文和英文关键词。
 ---
 
 # Lathe — 教程体系
 
-Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续写、收尾、复习、面试文档、验证、提问、标签、语气、扫描、列表十一项功能。质量基准线由 `references/style-benchmarks.md` 的标杆作者定义（生成时按下方「风格主锚点速查」表只选一个 id；需要理解具体写作手法时才加载该文件）。
+Lathe 管理动手实践型教程。写作质量以 `references/writing-core.md` 为准；主风格锚点从下方速查表选择。
 
 ## 使用方式
 
-所有操作通过 `/lathe` 调用，后跟**意图关键词**（中文或英文均可）和参数：
-
-```
+```text
 /lathe <主题>                          → 生成新教程
-/lathe 续写|extend <slug> [指导]       → 续写教程下一部分（该教程已有面试文档时，自动同步本部分）
-/lathe 续写 收尾 <slug>                → 生成总结部分并完结课程
-/lathe 复习|review <slug>              → 生成复习材料（不改变课程方向）
-/lathe 面试|interview <slug> [part]    → 生成或补齐面试文档（详见 references/interview.md）
-/lathe 验证|verify <slug>              → 端到端验证教程
+/lathe 续写|extend <slug> [指导]       → 续写下一部分
+/lathe 续写 收尾 <slug>                → 生成总结部分并完结
+/lathe 复习|review <slug>              → 生成复习材料
+/lathe 面试|interview <slug> [part]    → 生成或补齐面试文档
+/lathe 验证|verify <slug>              → 端到端验证
 /lathe 提问|ask <slug> <part> <问题>   → 提问教程内容
-/lathe 标签|tag <slug>                 → 管理教程标签
+/lathe 标签|tag <slug>                 → 管理标签
 /lathe 语气|voice [名称]               → 创建自定义语气
-/lathe 扫描|scan [目录]                → 登记磁盘上未被识别的教程
-/lathe 列表|list [slug]                → 列出所有教程或查看某教程状态
+/lathe 扫描|scan [目录]                → 登记已有教程
+/lathe 列表|list [slug]                → 列出教程或查看状态
 ```
 
-面试文档也可从复习或生成进入：`/lathe 复习 <slug> 面试 [part-NN]`、`/lathe <主题> 面试`。
-
-也支持纯自然语言触发（无需 `/lathe`），AI 会自动识别意图。中文和英文关键词均可识别。
+面试也可从复习或生成进入：`/lathe 复习 <slug> 面试 [part-NN]`、`/lathe <主题> 面试`。纯自然语言同样可触发。
 
 ## 操作路由
 
-根据用户消息中的意图关键词，**立即读取对应模块文件**（位于 `<SKILL_DIR>/references/`）并按其中的完整协议执行：
+识别意图后立即读取对应模块：
 
-| 用户意图 | 识别关键词（中文 / 英文） | 使用示例 | 读取模块 |
-|----------|-------------------------|----------|----------|
-| **生成新教程** | 主题描述（无下述关键词时） / topic description | `/lathe 用 Go 构建 Raft` | [references/generate.md](references/generate.md) |
-| **续写教程** | 续写、继续、下一部分 / extend、continue、next、add、part | `/lathe extend raft-go` 或 `/lathe 续写 raft-go`（该教程已有面试文档时自动同步本部分） | [references/extend.md](references/extend.md) |
-| **收尾完结** | 续写/extend + 收尾、完结、总结 / finish、wrap up | `/lathe 续写 收尾 raft-go` | [references/extend.md](references/extend.md)（收尾模式） |
-| **复习教程** | 复习、回顾 / review、revise、recap | `/lathe 复习 raft-go` 或 `/lathe review raft-go` | [references/review.md](references/review.md)（**含 `面试` token 时转** [references/interview.md](references/interview.md)） |
-| **面试文档** | 面试、interview（作为首个 token 且后跟已存在的 slug） | `/lathe 面试 raft-go` 或 `/lathe 面试 raft-go part-02` | [references/interview.md](references/interview.md) |
-| **验证教程** | 验证、检查、测试 / verify、check、test、validate | `/lathe verify raft-go` 或 `/lathe 验证 raft-go` | [references/verify.md](references/verify.md) |
-| **提问内容** | 提问、问、问题 / ask、question | `/lathe ask raft-go part-01 why use ring buffer`（发现教程错误时会给出勘误确认块，你手动确认后才修改） | [references/ask.md](references/ask.md) |
-| **管理标签** | 标签、打标签 / tag、tags、label | `/lathe tag raft-go` 或 `/lathe 标签 raft-go` | [references/tag.md](references/tag.md) |
-| **创建语气** | 语气、风格 / voice、tone、style | `/lathe voice terse` 或 `/lathe 语气 terse` | [references/voice.md](references/voice.md) |
-| **扫描登记** | 扫描、登记、注册 / scan、register、sync | `/lathe 扫描` 或 `/lathe scan ~/tutorials` | [references/scan.md](references/scan.md) |
-| **列出教程** | 列表、列出、查看状态 / list、ls、status | `/lathe list` 或 `/lathe 列表 raft-go` | [references/list.md](references/list.md) |
+| 意图 | 关键词 | 模块 |
+|---|---|---|
+| 生成 | 无下述操作词的主题描述 | [references/generate.md](references/generate.md) |
+| 续写 | 续写、继续、下一部分 / extend、continue、next、add、part | [references/extend.md](references/extend.md) |
+| 收尾 | 续写/extend + 收尾、完结、总结 / finish、wrap up | [references/extend.md](references/extend.md) |
+| 复习 | 复习、回顾 / review、revise、recap | [references/review.md](references/review.md) |
+| 面试 | 面试 / interview | [references/interview.md](references/interview.md) |
+| 验证 | 验证、检查、测试 / verify、check、test、validate | [references/verify.md](references/verify.md) |
+| 提问 | 提问、问、问题 / ask、question | [references/ask.md](references/ask.md) |
+| 标签 | 标签、打标签 / tag、tags、label | [references/tag.md](references/tag.md) |
+| 语气 | 语气、风格 / voice、tone、style | [references/voice.md](references/voice.md) |
+| 扫描 | 扫描、登记、注册 / scan、register、sync | [references/scan.md](references/scan.md) |
+| 列表 | 列表、列出、查看状态 / list、ls、status | [references/list.md](references/list.md) |
 
-**路由规则：**
+路由规则：
 
-1. 解析 `/lathe` 后的第一个关键词来确定意图。中英文关键词等价。疑问词（为什么、怎么 / why、how、what）**仅在同时给出已知 slug 时**视为提问意图，否则按歧义处理——避免把 `/lathe 怎么用` 这类话误判为 ask。
-2. **`面试` / `interview` 的识别**：必须是**独立 token**（前后为空白、行尾或标点）。两种成立方式——① 出现在 `复习` 语境中（`/lathe 复习 <slug> 面试`）；② 作为**首个 token** 且**后跟一个已存在的 slug**（`/lathe 面试 <slug>`）。不满足时视为**主题的一部分**，走正常生成（如 `/lathe 面试题生成器怎么做` → 生成教程）。不确定时**先问**，不要默认进入面试模式。
-3. **意图不明确时，先询问再执行。不要默认生成教程。** 歧义情形：只输入 `/lathe`、只给一个 slug（可能是续写/验证/提问/复习/面试）、含糊表达（`/lathe 这个教程怎么样`、`/lathe how is this tutorial`）。此时**以上方路由表为清单**，列出十一项操作（带简短说明）让用户选编号或关键词；用户选定的意图若缺参数（如续写需要 slug），补充询问后再读取模块。
-   反例——这些是**明确**的，不要多问：`/lathe 用 Go 构建 Raft`（主题 → 生成）、`/lathe 续写 raft-go`、`/lathe 验证 raft-go`。
-4. 纯自然语言触发（不含 `/lathe`）时通过上下文语义匹配意图，中英文均可。
-5. 各模块文件可能引用下方共享配置或 `references/` 下的其他共享文件。
+1. 疑问词仅在同时给出已知 slug 时视为提问，否则先消歧。
+2. `面试` / `interview` 必须是独立 token，且位于复习语境，或作为首 token 后跟已存在 slug；否则把它当主题的一部分。不确定时先问。
+3. 意图不明确时列出上方十一项让用户选择，不要默认生成。明确主题、明确操作不要多问。
+4. 复习语境含面试 token 时转 `interview.md`。
 
 ## 技能目录与共享文件
 
-本技能的入口文件是 `SKILL.md`，各模块文件位于其同级的 `references/` 子目录下，检查脚本位于 `scripts/` 子目录。后文中 `<SKILL_DIR>` 指 **SKILL.md 所在目录**（如 `~/.qoder/skills/lathe` 或 `<项目>/.reasonix/skills/lathe`）。
+`<SKILL_DIR>` 是本文件所在目录。共享文件按需加载：
 
-四个**共享**文件按需加载，不要无条件读取：
+| 文件 | 单一职责 | 何时读取 |
+|---|---|---|
+| [references/writing-core.md](references/writing-core.md) | 教程结构、4–7 构建配额、地基/承接豁免、总章 ≤9、研究与自检 | 生成、续写、收尾、复习；面试仅取研究预算与事实不变量 |
+| [references/knowledge-ledger.md](references/knowledge-ledger.md) | 双布局、canonical 知识表、固定八列、六态、选点优先级、确认/回执、承诺与闸门 | 生成、续写、收尾 |
+| [references/metadata.md](references/metadata.md) | metadata、Part 级路线、continuity 缓存、双布局与自愈 | 新建或写回 metadata、解析布局、自愈 |
+| [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者写法 | 只有需要理解锚点手法时 |
 
-| 文件 | 内容 | 何时读取 |
-|------|------|----------|
-| [references/writing-core.md](references/writing-core.md) | 教程结构、配额矩阵、标注类型与配额、不变量、研究纪律、预检、写法细节、交付前自检 | **仅写作型操作**：生成、续写、收尾、复习、面试文档（面试文档**只用**其中的配额矩阵检索预算与「有据可依或标记」不变量） |
-| [references/knowledge-ledger.md](references/knowledge-ledger.md) | 知识点账本 `syllabus.json` 规范与不变量、知识点来源与名额、去重、积压闸门、写前计划确认、播报与覆盖回执、练习承接三档、延后提醒、检查脚本用法 | **生成、续写、收尾** |
-| [references/metadata.md](references/metadata.md) | `metadata.json` 完整结构、`continuity` 摘要规范、`course_plan`、自愈协议 | 写 `continuity` / `course_plan`、或遇到 metadata 缺失/损坏需自愈时；**生成时字段速查表已足够，不读** |
-| [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者表与场景侧重表 | **仅当需要理解某锚点的具体写作手法时**；只选 id 用下方「风格主锚点速查」表，不读本文件 |
+最小加载集：
 
-**反向清单——明确不要读取**（读多了会挤占上下文并拖慢执行）：
-
-- **生成新教程：** 读 `writing-core.md` + `knowledge-ledger.md` + `generate.md`；不要读 `extend.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`；`voice.md` 仅在 voice 非 `plainspoken` 时读；`metadata.md` 仅在字段速查表不足或需自愈时读；`interview.md` **仅在本次带 `面试` 参数时**读。
-- **续写 / 收尾：** 读 `writing-core.md` + `knowledge-ledger.md` + `extend.md`（+ `metadata.md`）；**收尾例外**——门禁判定阶段只读 `SKILL.md` + `extend.md` 的收尾节 + 教程的 metadata/账本（那两个共享文件合计约 63 KB，被拒绝时白读），**通过后**再加载 `writing-core.md` 与 `knowledge-ledger.md` 吸收正文与写总结（见 extend.md 的加载顺序说明）；不要读 `generate.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`。**`interview.md` 是例外**——该教程已有面试文档时读它以追加本部分分段，或带 `面试` 参数时读它以创建文档。
-- **复习：** 不要读 `knowledge-ledger.md`（只读 `syllabus.json` 数据）、`generate.md`、`extend.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`；**含 `面试` token 时改读 `interview.md`**（本文件下方协议不再适用）。
-- **面试文档：** 不要读 `knowledge-ledger.md`、`generate.md`、`extend.md`、`review.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`、`style-benchmarks.md`；`metadata.md` 仅在需自愈时读。
-- **验证：** 不要读 `writing-core.md`、`knowledge-ledger.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`style-benchmarks.md`。
-- **提问 / 标签 / 列表 / 扫描：** 不要读 `writing-core.md`、`knowledge-ledger.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`verify.md`、`style-benchmarks.md`。
-
-> 判据：只读上方"何时读取"列为"是"的文件；本清单是它的补集，两者不应有交集。
+- 生成：`generate.md` + `writing-core.md` + `knowledge-ledger.md` + `metadata.md`；非默认 voice 才读 `voice.md`；带面试 token 才读 `interview.md`。
+- 续写：`extend.md` + 上述三个共享规范；已有或请求面试文档时加 `interview.md`。
+- 收尾：先读 `extend.md` 收尾节与课程 metadata/知识事实源判门禁；通过后再读共享规范和必要正文。
+- 复习、面试、验证、提问、标签、扫描、列表按各模块声明加载；保留这些模块尚未迁移的兼容读法，不把它们反向当成 0.6.1 写入规范。
 
 ## 风格主锚点速查
 
-生成新教程时按主题选定**一个**主锚点，把其 id 写入 `metadata.json` 的 `style_anchor`（续写 / 复习 / 收尾从 metadata 读取，不重选、不加载 `style-benchmarks.md`）。
+生成时选一个 id 写入 metadata 的 `style_anchor`；续写沿用。
 
-| 主题场景 | 主锚点 id |
-|----------|-----------|
-| 构建编译器 / 解释器 / 语言工具 | `nystrom` |
+| 场景 | id |
+|---|---|
+| 编译器 / 解释器 / 语言工具 | `nystrom` |
 | 算法 / 数据结构 / 数学可视化 | `amit-patel` |
-| 系统底层 / 硬件 / 协议拆解 | `ciechanowski` |
+| 系统底层 / 硬件 / 协议 | `ciechanowski` |
 | 分布式系统 / 基础设施 | `sam-who` |
-| 日常工具 / 去神秘化 / 入门 | `julia-evans` |
+| 日常工具 / 入门 | `julia-evans` |
 | 系统架构 / 工程权衡 | `kleppmann` |
-| Rust 语言相关 | `klabnik-nichols` |
-| 涉及记忆 / 回顾机制设计 | `matuschak` |
-| 底层原理 / 追本溯源 | `bernhardt` |
-| 需要"让概念可见"的交互 | `bret-victor` |
+| Rust | `klabnik-nichols` |
+| 记忆 / 回顾机制 | `matuschak` |
+| 底层原理 | `bernhardt` |
+| 交互式概念可视化 | `bret-victor` |
 
-**本表是 `references/style-benchmarks.md`「场景侧重」表的投影**——两者同为 `style_anchor` 的合法取值来源，**id 只有这 10 个，不得自创**。主题跨多个场景时选最强的一个作主锚点，其余为辅。**需要理解某锚点的具体写作手法时**（如"nystrom 式章节独立成篇"具体指什么）才去读 `style-benchmarks.md` 的「标杆作者」表。
+id 只能取以上十个。跨场景时选最强主锚点。
 
-## 教程存储路径配置
+## 教程位置与双布局
 
-教程存储位置记录在 `~/.lathe/config.json`，支持**多路径存储**——不同教程可以保存在不同目录：
+配置位于 `~/.lathe/config.json`：
 
 ```json
 {
   "tutorials_base_path": "~/others/lathe_tutorials",
-  "tutorial_paths": {
-    "taskr": "~/others/lathe_tutorials",
-    "raft-go": "~/projects/my-tutorials"
-  }
+  "tutorial_paths": {"raft-go": "~/projects/my-tutorials"}
 }
 ```
 
-| 字段 | 含义 |
-|------|------|
-| `tutorials_base_path` | **默认基础目录**：生成新教程时默认提议的位置；`voices/` 自定义语气目录也始终位于此处 |
-| `tutorial_paths` | **教程 → 位置映射**：每个教程（slug）实际所在的基础目录。可选字段——缺失时等价于所有教程都在 `tutorials_base_path` |
+- config 不存在时，按 `references/scan.md` 的首次/已有教程流程建立后继续。
+- 生成时每次确认保存基础目录；保存到非默认目录才登记 `tutorial_paths[slug]`。
+- 已有教程先查 `tutorial_paths[slug]`，再查默认基础目录；找不到时列出已知位置并提示 `/lathe 扫描`。
+- 参数是已有目录时直接操作该目录，不登记配置；末级目录名作为 slug。
+- 扫描与枚举跳过点号开头的目录。
 
-**每次调用本技能时，首先解析配置：**
+`<COURSE_DIR>` 指解析后的课程根目录。正文始终是 `<COURSE_DIR>/part-*.md`。辅助布局由 metadata 位置一次性确定：
 
-1. 尝试读取 `~/.lathe/config.json`。
-2. **文件存在** → 直接读取，不再询问默认目录。
-3. **文件不存在** → 按 `<SKILL_DIR>/references/scan.md`"建立 config（config.json 不存在时）"询问用户是首次使用还是已有教程并写入 config，完成后继续原本的调用意图。
+| 布局 | 判定 | knowledge / research / verify |
+|---|---|---|
+| 0.6.1 新课程 | `<COURSE_DIR>/_lathe/metadata.json` | `_lathe/knowledge-points.md`、`_lathe/research.md`、`_lathe/verify-result.json`、`_lathe/verify-workspace/` |
+| legacy 课程 | `<COURSE_DIR>/metadata.json` | `syllabus.json`、`research.md`、`verify-result.json`、`.lathe-verify/`，全部原地 |
 
-**教程位置解析规则（各操作通用）：**
+不得逐文件回退。两处 metadata 同时存在，或辅助文件跨布局混放，均列出冲突并停止写入；旧课不迁移、不创建 `_lathe/`。目录只有 part 而 metadata 缺失时按 `metadata.md` 自愈，不能当成 slug 不存在。
 
-- **生成新教程：** 每次生成前都询问本课程保存位置（默认提议 `tutorials_base_path`）；保存后将该教程登记到 `tutorial_paths`。
-- **操作已有教程（带 slug）：** 先查 `tutorial_paths[<slug>]`；未登记则回退到 `tutorials_base_path`；该位置也找不到此 slug 时，列出 config 中已知的所有 slug 及其位置供用户选择，**并提示 `/lathe 扫描` 可以把磁盘上未登记的教程找回来**（教程被手工拷贝、克隆或移动进来时就属于这种情况）。
-- **参数给的是目录而不是 slug**（绝对路径，或 `~/tmp/tutorials/foo-rs` 这种带 `/` 的路径）：目录存在且含 `metadata.json`（或 `part-*.md`）时，**本次直接在这个目录上操作**，取末级目录名当 slug；**不写 `~/.lathe/config.json`**——临时目录、测试沙箱、别人拷来的教程都属于这种场景，登记只会污染配置。结果里提示一句「本次按目录操作，未登记；要长期用 slug 调用请 `/lathe 扫描 <目录>`」。目录存在但没有 `metadata.json` 时按「metadata 缺失」处理（可自愈重建），不当成找不到 slug。
-- **枚举教程目录时（扫描、列表等），跳过以 `.` 开头的隐藏目录**——如验证工作区 `.lathe-verify/`，它们不是教程。
-- 后文中 `<TUTORIALS_DIR>` 指**默认基础目录**（`tutorials_base_path`）；涉及具体教程时按上述规则解析到其实际所在目录。`voices/` 目录始终位于默认基础目录下。
+## 面试文档路径
 
-> 兼容性：仅含 `tutorials_base_path` 的旧 config 继续可用——等价于 `tutorial_paths` 缺失的状态，已有教程无需迁移。
+按以下顺序解析：
 
-### 面试文档路径配置
+1. `interview_paths[slug]/<slug>.md`；
+2. `interview_base_path/<slug>.md`；
+3. 都未配置时采用布局 fallback：新课程 `<COURSE_DIR>/_lathe/interview.md`，legacy `<COURSE_DIR>/interview.md`。
 
-面试文档（每个 slug 一个 Markdown 文件，详见 [references/interview.md](references/interview.md)）的位置用**另外两个可选字段**记录，缺失即走下一档：
+首次创建必须展示默认路径并确认；已有文档沿用当前位置。外部路径仍可独立于课程布局。
 
-```json
-{
-  "interview_base_path": "~/Code/agent-transition/interview",
-  "interview_paths": {
-    "nest-kb-service": "~/Code/agent-transition/interview/阶段一_NestJS与服务端基础"
-  }
-}
-```
+## metadata 速查
 
-| 顺序 | 条件 | 文档路径 |
-|------|------|----------|
-| 1 | `interview_paths[<slug>]` 存在 | `<该目录>/<slug>.md` |
-| 2 | `interview_base_path` 存在 | `<该目录>/<slug>.md` |
-| 3 | 都没有 | `<教程目录>/<slug>/interview.md` |
+完整契约见 `references/metadata.md`。新课程 metadata 只放 `_lathe/metadata.json`，常用字段为：
 
-**位置确认规则：**
+`_warning`、`_needs_backfill`、`lathe_version`、`part_versions`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
 
-- **文档不存在**（首次创建）→ **必须询问**：展示解析出的默认路径并确认；用户改位置则写入 `interview_paths[<slug>]`。**不得静默跳过。**
-- **文档已存在** → **不询问**，沿用当前位置，仅在结果里一行播报。
+`course_plan` 固定为 3–12 个 Part 级项，不复制点级状态。`continuity` 是可重建缓存：控制性示例、固定数字、隐喻、最近已讲概念、未决线程、衔接、最近标题与更新时间；知识点状态与练习承诺只在 canonical ledger。字段缺失时按 metadata.md 推断并在写回时补齐，不能因普通缺字段中止。
 
-> 兼容性：两个字段都可选，旧 config 缺失即走第 3 档，无需迁移。
+状态机：
 
-## metadata.json 速查
+- 生成/续写后 `unverified`；验证通过为 `verified`；收尾为 `completed`。
+- 完结课程再次续写时回到 `unverified`；复习不改状态。
+- 提问勘误确认修改后，`verified` 回到 `unverified`，`completed` 保持。
 
-每个教程目录下有一个 `metadata.json` 索引文件。字段一览（**完整结构、字段语义与自愈协议见 [references/metadata.md](references/metadata.md)**）：
+## 知识表速查
 
-`_warning`、`_needs_backfill`、`lathe_version`、`part_versions`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`knowledge_backlog`、`syllabus_ids`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
+新课程唯一知识点事实源是 `_lathe/knowledge-points.md`；固定八列且只能有一个连续表：
 
-**读取几个已知字段时直接读 JSON 即可，无需加载 metadata.md。** 遇到以下情况才读：新建 metadata、写 `continuity` / `course_plan`、或文件缺失/损坏需要自愈。
+`ID | 知识点 | 来源 | 类型 | 计划 Part | 状态 | 已讲位置 / 承诺来源 | 备注`
 
-**知识点账本 `syllabus.json`**（与 `metadata.json` 并列）：课程承诺讲的每个知识点一条记录，六种状态 `planned` / `queued` / `taught` / `self-study` / `dropped_by_user` / `duplicate`，**状态改变时改字段、永不删除条目**；`knowledge_backlog` 是其中 `queued` 条目的投影，`metadata.syllabus_ids` 是它的 ID 镜像（用来发现被整条删掉的条目）。生成时创建，续写/收尾维护，复习与列表只读。规范见 [references/knowledge-ledger.md](references/knowledge-ledger.md)。
+- 状态：`planned` / `queued` / `taught` / `self-study` / `dropped_by_user` / `duplicate`。
+- 类型：`main` / `foundation` / `mergeable` / `carry`。
+- 位置使用 `at:` / `promise:` / `dup:` / `—`；进度与六态统计是由数据行重建的显示缓存。
+- 每次写操作运行 `ledger_check.py <COURSE_DIR>`；脚本参数永远传课程根目录。
+- legacy 课程继续原地维护 `syllabus.json`，保持其 JSON 格式和未知字段。
 
-**检查脚本（`scripts/`，纯标准库 Python 3）**：`ledger_check.py`（账本对账；`--receipt` 出回执行、`--finish` 按 A/B 类分组打印收尾门禁缺口并在拒绝时 `exit 2`、`--continuity` 实测索引预算与条数上限）、`part_lint.py`（结构检查；`--kind regular|finish|review` 三种档位分别对应常规部分 / 总结部分 / 复习材料）、`trial_run.py`（交付前试跑）。写作型操作有 shell 时必须跑，**但只跑本次新写/改动的部分**（检查 0.6.0 之前的历史部分时加 `--legacy`），回执里的数字粘贴脚本输出；复习只跑 `part_lint.py --kind review`（不跑账本与试跑脚本）；收尾写完后跑 `ledger_check.py`、`--continuity` 与 `part_lint.py --kind finish`；没有 shell 时按 `knowledge-ledger.md`「人工核对清单」核对。
+## 验证状态横幅
 
-**任何字段缺失都必须可降级运行**——按 metadata.md 的规则推断，并在本次写回时补上，绝不因缺字段中止操作。
-
-**status 状态机：**
-
-- `unverified` → 生成/续写后的默认状态（新增部分后重置为此值）；
-- `verified` → 验证通过后由 verify 写入；
-- `completed` → 收尾完结（`/lathe 续写 收尾 <slug>`）后写入，表示课程已达成学习目标并体面结束；
-- **`completed` 可被撤销：** 用户对已完结课程再次续写（写入任何新的常规部分）时，`status` 重置为 `unverified`——继续学习意味着课程重新开放。**复习不改变 status**。
-- **提问勘误：** `/lathe 提问` 发现错误、用户显式选择「确认修改」后，原地修正正文，`verified` 改回 `unverified`（`completed` 保持）；选「只记勘误」不改 status（见 [references/ask.md](references/ask.md)）。
-
-## 验证状态横幅（part 顶部）
-
-每个 `part-NN.md` 可以在 H1 之后、正文之前带一个验证状态横幅，由 generate / extend / verify 维护。它不是教程正文，不计入结构或知识点配额；读者可见，但不要把它当教学内容。
-
-固定标记与未验证态模板：
+常规 `part-NN.md` 在 H1 后可带：
 
 ```markdown
 <!-- lathe:verify-status:start -->
@@ -196,32 +161,16 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 <!-- lathe:verify-status:end -->
 ```
 
-状态规则：
-
-- **未验证**（generate/extend 写入）：使用上面的 WARNING。
-- **失败**：WARNING，写“验证失败：第 N 个可执行步骤（见 `verify-result.json`）”。
-- **跳过**：`parts` 中状态为 `skipped` 时写 NOTE，写“验证跳过：<原因>”；全局 `skipped` 且没有 `parts` 时不改横幅，保留未验证警告。
-- **通过**：移除整个标记块，不写“已验证”正面横幅。
-- `completed` 不特殊处理；未验证/失败/跳过仍显示对应横幅。
-- **复习材料（`part-NN-review.md`）与总结部分（`/lathe 续写 收尾` 产出的 `part-NN.md`）不写横幅**：两者都没有 `runnable` / 检查点，`/lathe 验证` 对它们无事可做，写「尚未通过端到端验证」就是一句永不撤销的假承诺；`part_lint.py` 的 `--kind review` / `--kind finish` 也不因缺横幅而警告（`--kind finish` 反过来会**拒绝**出现的横幅）。
-- 旧 part 没有横幅：verify 在失败/跳过时可以插入；通过时不添加。
-- 增量复用跳过（`skipped_reuse`）的 part 不修改横幅。
-- **写入顺序：** verify 必须先更新横幅，再写 `verify-result.json` 的 `checked_at`；否则 part 的 mtime 会晚于 `checked_at`，下次增量复用会误判为“内容已变更”。
-- **写入边界：** verify 只能替换/移除 `lathe:verify-status` 标记块，不能改其他正文；generate/extend 只插入未验证态，不写通过/失败态；ask 只在用户确认勘误并原地修正后把横幅换回未验证态。
-- **冲突保护：** 发现多个标记块、嵌套或缺少 `end` 时停止写入该 part，报告冲突；不要猜测替换。
+生成/续写写未验证态；失败或跳过由 verify 更新；通过时移除。复习与收尾不写横幅。发现重复、嵌套或缺少结束标记时停止修改该 part。verify 先更新横幅，再写当前布局的 verify result；新课程使用 `_lathe/verify-result.json` 和 `_lathe/verify-workspace/`，legacy 保持根目录旧路径。
 
 ## 教程语言
 
-教程**正文语言**与触发语言解耦：
-
-1. **生成时确定**：默认跟随用户当前对话语言；用户显式指定（如 "用英文写"）时以指定为准。记录到 `metadata.json` 的 `language` 字段。
-2. **续写/复习/提问时沿用**：读取 `language` 字段并保持一致，不因用户切换对话语言而漂移。
-3. **旧教程缺失该字段时**：按已有部分的实际语言推断，并在下次写 metadata 时补上。
+生成时默认跟随对话语言，用户可覆盖并写入 `language`。续写、复习、提问沿用；legacy 缺失时从正文推断并在下次 metadata 写回时补齐。
 
 ## 保持会话
 
-无论执行哪个操作，完成后不要结束会话。保持可用以回答后续问题。你是他们在该主题上的专家向导。
+完成操作后保持可用，继续回答该主题的问题。
 
 ## 版本
 
-**技能版本：v0.6.0**（版本号同时记录在每个教程 `metadata.json` 的 `lathe_version` 字段；`/lathe 列表` 会在结尾显示当前版本）
+**技能版本：v0.6.1**。写入型操作同步更新 metadata 的 `lathe_version`；每个新 part 在 `part_versions` 记录本次版本。
