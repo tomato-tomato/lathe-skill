@@ -4,6 +4,8 @@
 
 **先读共享文件：** 本操作需要 `<SKILL_DIR>/references/writing-core.md`（教程结构与续写变体、配额矩阵、标注规则、不变量、研究纪律、预检、写法细节、交付前自检）与 `<SKILL_DIR>/references/knowledge-ledger.md`（知识点来源与账本、去重、闸门、写前确认、回执、练习承接）。本文件只补充续写特有的流程，不复述它们。
 
+> **收尾模式的加载顺序不同（0.6.0）**：走「收尾模式」时**先只读本文件的收尾节 + 教程的 `metadata.json` / `syllabus.json` / `research.md`**，把门禁判完；门禁拒绝就到此为止（两个共享文件合计约 63 KB，白读一次）。**门禁通过之后再加载** `writing-core.md` 与 `knowledge-ledger.md`——那时才需要结构与回执规则。
+
 **触发格式：**
 
 - 常规续写：`/lathe 续写|extend <slug> [指导]`
@@ -28,6 +30,8 @@
 **路径 A —— `continuity` 可信**（存在，且 `updated_through` 等于当前最后一个常规部分）：
 
 **先做手工编辑检测：** 用文件 mtime 扫描所有 part；任何 part 的 mtime 晚于 `continuity.updated_at`，视为手工改动，改走路径 B 重建。**当本次要写的部分编号是 3 的倍数（part-03 / 06 / 09…）时，做一次全读审计**：读取全部常规部分，核对并重建 continuity，不只读最后一部分。若 `changed_interfaces` 非空，读取涉及接口/调用点的旧 part；若 `open_threads` 提到旧 part，读取该 part 的相关小节。
+
+**`continuity` 可信的判定必须容错搬运**：用「part 的 mtime 晚于 **`metadata.json` 的 mtime** 超过 2 分钟」判手工编辑，而不是「晚于 `continuity.updated_at`」——教程被 `cp -R`、`git clone`、网盘同步、移动目录之后所有时间戳都会变成同一时刻（实测：拷贝出来的教程 3 个 part 全部「晚于」`updated_at` 6000 秒，会把门禁刚刚省下的 183 KB 正文重读成本全额收回）。同一批写入的文件时间几乎相同，真正的编辑则明显晚于 metadata。
 
 审计通过后，只读这些即可动笔：
 1. `metadata.json` 全文（含 `continuity` 摘要）；
@@ -122,7 +126,7 @@
 - 将新查阅的来源 URL 追加到 `sources` 数组（去重）；
 - **维护 `changed_interfaces`：** 本部分有 API/签名/跨文件契约变化时，按 `metadata.md` 的字段规范追加条目（`file` / `symbol` / `from` / `to` / `call_sites` / `supersedes` / `part`）；同一符号只保留最新一条活跃条目；活跃超过 8 条，或旧条目被替代时，移到 `research.md` 的 `## Changed Interfaces Archive`。没有变化时不改（空数组保持空）。
   **若本次变更会让较早部分的某组检查点输出字面失配**（状态码、返回体形状、字段增删、错误结构等），必须在条目里写 `supersedes: ["part-NN.md#k"]`（k = 该部分正文里加粗的检查点组号）；**不要回头修改旧部分**。验证会跳过被登记的组并记 `historical`，旧部分的 `passed` 不被推翻。只影响 `runnable` 代码块的签名变化不登记 `supersedes`（由旧签名检查负责）。
-- **增量更新 `continuity`**（契约见 `<SKILL_DIR>/references/metadata.md`）：追加本部分新增的 `covered_concepts`（**只追加、不合并**）与 `fixed_numbers`、更新 `open_threads`（已提出但未展开的问题/伏笔，最多 10 条，每条 ≤80 字；已解决/溢出移到 `research.md` 的 `## Open Threads Archive`，不删除）、覆盖 `next_hook` 为本部分"接下来"指向的方向、`part_titles` 加入本部分标题、`updated_through` 设为本部分文件名、刷新 `updated_at`；若本部分明确告别了隐喻则置 `metaphor_retired: true`。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；这是**索引预算**，不是正文预算，超出时归档/压缩索引字段，不压缩课程正文。分字段上限见 `metadata.md`。**这一步不能省——省掉它，下次续写就要全文重读。**
+- **增量更新 `continuity`**（契约见 `<SKILL_DIR>/references/metadata.md`）：追加本部分新增的 `covered_concepts`（**只追加、不合并**）与 `fixed_numbers`、更新 `open_threads`（已提出但未展开的问题/伏笔，**最多 8 条**，每条 ≤80 字；已解决/溢出移到 `research.md` 的 `## Open Threads Archive`，不删除）、覆盖 `next_hook` 为本部分"接下来"指向的方向、`part_titles` 加入本部分标题、`updated_through` 设为本部分文件名、刷新 `updated_at`；若本部分明确告别了隐喻则置 `metaphor_retired: true`。索引预算见 `metadata.md`「预算必须是可达的」：**先有各字段的条数上限（`covered_concepts` 留最近 24 条、`open_threads` 8 条、`fixed_numbers` 18 项、`part_titles` 最近 8 个部分），总量 2200 字软 / 3000 字硬才可达**。这是索引预算，不是正文预算——超出只归档索引字段，**绝不压缩正文**。**写回 metadata 后跑 `ledger_check.py <教程目录> --continuity`**，它逐字段实测并点名该归档哪几条。**这一步不能省——省掉它，下次续写就要全文重读。**
 - **更新 `syllabus.json`（先于积压）**：按 knowledge-ledger.md「1. 账本」——讲掉的改 `taught` 并填 `at`/`depth`，顺延的改 `queued`，新增清单 / 必做练习（`E<part>-<k>`）/ 深化条目，去重命中记 `duplicate`，确认中被用户删掉的记 `dropped_by_user`；**不删除任何条目**；按行改写；新增 ID 补进 `metadata.syllabus_ids`；刷新 `updated_at`。
 - **更新 `knowledge_backlog`**：与账本 `queued` 保持一一对应（讲掉的移除、顺延的加入、闸门按用户选择执行）；重规划触发时输出草案，**用户确认后才改 `course_plan`**。清空写 `[]`。然后跑 `ledger_check.py <教程目录> --receipt part-NN.md`，必须闭合。
 - **更新 `continuity.exercise_carry`**：写入本部分引入新概念的必做练习（≤2 道）的承接结果 `{integrated, chapter, deferred}`（各 ≤3 条、每条 ≤40 字），同时给这些条目在账本里写 `promised_by: <本部分文件名>`；上一部分留下的承接已讲透的移除并追加进 `covered_concepts`，**没讲成的按「先还承诺，再讲新的」回滚**，不得静默留存。
@@ -131,7 +135,7 @@
 - `model` 更新为*你*运行的模型（如 `QoderWork`）；`lathe_version` 更新为当前技能版本；
 - `status` 设为 `unverified`（见 SKILL.md"status 状态机"）——若原状态为 `completed`，此写入即撤销完结，课程重新开放；
 - 顶部缺少 `_warning` 字段的旧教程，写回时补上；
-- 写回更新后的文件。若 `~/.lathe/config.json` 的 `tutorial_paths` 中尚未登记该教程，一并登记其位置。
+- 写回更新后的文件。若 `~/.lathe/config.json` 的 `tutorial_paths` 中尚未登记该教程，一并登记其位置——**但本次是按目录直接操作的（SKILL.md「参数给的是目录而不是 slug」一档）除外：不要登记**，临时目录与测试沙箱进配置只会污染它。
 
 ### 7. 同步面试文档（不改变上方任何规则）
 
@@ -157,7 +161,7 @@
 
 当续写指令中含"收尾/完结/总结"意图时执行本模式——生成总结部分并完结课程，不引入新教学内容。
 
-1. **先判门禁，再付读取成本。** 门禁只需要三个小文件：`metadata.json`（`knowledge_backlog`、`continuity.exercise_carry`、`course_plan`、`parts`）+ `syllabus.json` + `research.md` 的归档小节——**不要先读正文**，门禁拒绝时那些读取全部白付（实测：门禁输入约 22 KB，而步骤 2 的正文读取约 137–182 KB）。
+1. **先判门禁，再付读取成本。** 门禁只需要三个小文件：`metadata.json`（`knowledge_backlog`、`continuity.exercise_carry`、`course_plan`、`parts`）+ `syllabus.json` + `research.md` 的归档小节——**不要先读正文**，门禁拒绝时那些读取全部白付（实测：门禁输入 30 KB——`metadata.json` 12 KB + `syllabus.json` 10.9 KB + `research.md` 7 KB，而步骤 2 的正文读取约 137–183 KB，省下来的是整份正文）。
    跑 `ledger_check.py <教程目录> --finish` 拿分组结果，**两类缺口的性质不同，处置也不同**：
 
    | 类别 | 是什么 | 可用选项 |
@@ -167,9 +171,11 @@
 
    - **A 类非空时不给 ④**——那是真有欠账，必须 ①/②/③ 三选一；A 类为空、只剩 B 类时默认 ④（「目标已达成、路线没走完」是正常状态，不该被当成欠账处理，更不该被逐条写成 `self-study`）。
    - 任一类别非空时都要**列全 ID**再让用户选；**用户确认前不读正文、不写总结、不得把 `status` 置为 `completed`**。
+   - **取不到用户回复时**（无人值守、批量脚本、对方不在线）：停在门禁，把分组缺口与「①/②/③」原文写进本次结果就结束了——**这是预期行为，不是失败**；不要为此新增任何 metadata 状态字段，也不要「先写个草稿」，下次带着选择再来即可。
    - 选 ② 的条目账本改 `self-study` 并写进 `research.md` 的 `## Self-study Backlog`；选 ③ / ④ 时账本保持原状态（`queued` 仅 ③ 也保留原状），`knowledge_backlog` 与账本保持一致、不清空。
    - 账本缺失时先按 `metadata.md`「旧教程首次回填」建账并请用户确认。
-2. **吸收教程**：同常规步骤 0、1、2（路径解析、按 `continuity` 新鲜度决定读取范围、目标达成评估）。**但收尾要覆盖全课程**，所以：`continuity` 可信时读取 `continuity` + 最后一部分全文，并对其余部分只读一级/二级标题（`grep -n '^#\{1,2\} ' <file>`）以获得逐部分回顾所需的骨架；`continuity` 过期时按路径 B 全文读取。若教程目录存在 `research.md`，读取其中的 `## Open Threads Archive`、`## Changed Interfaces Archive`、**`## Self-study Backlog` 与 `## Covered Concepts Archive`**，用于目标对照、覆盖核对和后续方向。**门禁已在步骤 1 判定完毕**，这一步只管取材所需的正文与归档。跳过本地项目路径询问；收尾不做新的网络研究（除非总结需要核实某个关键事实）。
+**门禁阶段只需要**：`SKILL.md`（位置解析）、本文件的「收尾模式」节、`ledger_check.py` 的输出、教程的三个小文件——**不要在这一步读 `writing-core.md` / `knowledge-ledger.md`**（合计约 63 KB，被拒绝时白付）。
+2. **吸收教程**（门禁通过后才做，此时才加载 `writing-core.md` 与 `knowledge-ledger.md`——未讲清单、延后提醒、回执口径在后者）：同常规步骤 0、1、2（路径解析、按 `continuity` 新鲜度决定读取范围、目标达成评估）。**但收尾要覆盖全课程**，所以：`continuity` 可信时读取 `continuity` + 最后一部分全文，并对其余部分只读一级/二级标题（`grep -n '^#\{1,2\} ' <file>`）以获得逐部分回顾所需的骨架；`continuity` 过期时按路径 B 全文读取。若教程目录存在 `research.md`，读取其中的 `## Open Threads Archive`、`## Changed Interfaces Archive`、**`## Self-study Backlog` 与 `## Covered Concepts Archive`**，用于目标对照、覆盖核对和后续方向；**归档条目按 `metadata.md`「归档条目的写法规范」判读**——遇到「解决于 part-02（前两条）」这类无法定位到具体部分的旧写法，不采信其结论，改用 `continuity.open_threads` 与各部分的「本部分不覆盖」重建，并一句提示「归档条目无法定位」。**门禁已在步骤 1 判定完毕**，这一步只管取材所需的正文与归档。跳过本地项目路径询问；收尾不做新的网络研究（除非总结需要核实某个关键事实）。
 3. **确定部分编号**：同常规步骤 5 的规则（含复习部分在内的最大编号 + 1）。
 4. **写入总结部分** `part-NN.md`，内容要求：
    - **全课程回顾**：逐部分一句话总结构建了什么、学到了什么；
@@ -179,16 +185,30 @@
    - **练习方向**：3-5 个可基于本课程自主探索的方向，每个具体到可立即开始；
    - **寄语**：遵循 writing-core.md"教程结构"中收尾寄语的写法（邀请读者走出铺设的道路）。
    - 末尾说明课程已完结；未来想继续精进时直接续写即可，课程会自动重新开放。
-   - 总结部分**不写** `## 检查点`（无可执行新内容），用一段"回顾自检"代替：列出 3-5 个贯穿全课程的关键问题供读者自测。也不写 `## 你将构建什么`。
-   - 同样执行 writing-core.md"交付前自检"（结构按收尾变体核对）。
-5. **更新 metadata**（门禁已在步骤 1 判定并通过）：新部分加入 `parts`；`status` 设为 `completed`；更新 `model`、`lathe_version`；`continuity` 照常增量更新（`next_hook` 写明课程已完结、可随时续写重新开放；`open_threads` 移到 `research.md` 的 `## Open Threads Archive` 或标注 resolved，不删除）；`knowledge_backlog` 与账本 `queued` 保持一致（门禁通过的正常情况下为 `[]`）；账本刷新 `updated_at`，**不新增、不删除条目**；`changed_interfaces` 保持现状（收尾不引入新代码变更）；`goal`、`topic_novelty` 等缺失字段补上；`course_plan` 保留为已走路线，不删除。
+   - **总结部分的结构（0.6.0 定死，自检与 `part_lint.py --kind finish` 都按这张表对照）**：
+     | 必须出现 | 必须不出现 |
+     |---|---|
+     | `## 全课程回顾`（逐部分一句话）、`## 知识图谱`、`## 目标对照`、`## 未讲清单（按 ID）`、`## 回顾自检`（3-5 个贯穿全课程的问题，**代替** `## 检查点`）、`## 练习方向`、`## 寄语` | `## 检查点`、`## 你将构建什么`（无可执行新内容）；`## 前置条件`、`## 来源`（总结部分不做新研究、不要求读者新装备）；**四个契约行也不写**——没有下一部分可交接，硬写就是假契约 |
+   - **总结部分不写验证状态横幅**：它没有 `runnable`、没有检查点，`/lathe 验证` 对它无事可做，写「尚未通过端到端验证」是一句永不撤销的假承诺（`part_lint.py --kind finish` 已按此不报缺失）。
+   - `plan_ref` 数的是**第几个教学部分**（不含复习材料与总结部分），不是文件名编号——本次总结会占用一个文件名编号（如 `part-05.md`），但**不算作第 N 个教学部分**。若走 ④，未开工的是路线图第 k 项，末尾说明里写清「下次续写会新建 `part-(NN+1).md`，补的是路线图第 k 项」，别让读者以为编号已经排到第 k 项。
+   - 同样执行 writing-core.md"交付前自检"（结构按上表核对），并跑 `part_lint.py <总结文件> --kind finish`。
+5. **更新 metadata**（门禁已在步骤 1 判定并通过）：
+   - 新部分加入 `parts`，并在 `part_versions` 记 `"<总结文件名>": "<当前技能版本>"`（这份清单必须覆盖每一个 `parts` 里的文件，缺一个就会让历史部分被误判）；`status` 设为 `completed`；更新 `model`、`lathe_version`。
+   - **`continuity.exercise_carry` 原样保留，不得清空或覆盖**——收尾部分没有练习，按「每次写回覆盖为本部分的分流结果」的字面执行会把 `integrated` / `deferred` 里**仅存的承诺记录**抹掉，而 ④/③ 之后正是靠它加上账本 `promised_by` 才查得到「还有什么没兑现」。同理 `covered_concepts` / `fixed_numbers` 只追加不删。
+   - `next_hook` 写明课程已完结、可随时续写重新开放（走 ④ 时补一句「未开工的是路线图第 k 项」）。
+   - `open_threads` 的归档语义 = **信息不丢**，不是数组不动：仍未解决的线程整条搬进 `research.md` 的 `## Open Threads Archive`（按 `metadata.md` 的条目格式：`- [deferred] 提出于 part-NN：…`），`continuity.open_threads` 相应**清空或只留最近 8 条**；**不得为了「不删除」而把未解决的标成 `resolved`**。
+   - 账本刷新 `updated_at`，**不新增、不删除条目、不改状态**（走 ④ 时 `planned` 保持 `planned`）。**唯一允许的字段级补充是 `promised_by`**——看到 `from`/`note` 里写着「档 1 融入 → Part N」「档 3 顺延」却缺该字段的条目就补上，**但只补仍会被门禁看见的**（状态仍是 `planned` / `queued` 的）；`taught` 与 `self-study` / `dropped_by_user` 的条目不要补（前者已兑现、后者已放弃，补了只会制造噪声）。
+   - `knowledge_backlog` 与账本 `queued` **保持等式一致**：走 ④ 时 A 类为空、`queued` 本就为 `[]`，所以积压是 `[]`；走 ③ 时 `queued` 原样保留、积压原样保留，两边仍然相等。**不存在「门禁通过但两边不一致」的状态**——上一句里的「正常情况为 `[]`」只是 A 类为空的推论，不是额外要求。
+   - `changed_interfaces` 保持现状（收尾不引入新代码变更）；`goal`、`topic_novelty` 等缺失字段补上；`course_plan` 保留为已走路线，不删除。
+   - **`continuity` 若已过期**（步骤 2 走了路径 B）：收尾同样可以把摘要整段重建（提炼完整摘要后按本步的保留规则写回），不是只能增量——但要保住上面两条「不得清空」。
+   - 写回后跑 `ledger_check.py <教程目录>`（应闭合）与 `--continuity`（索引超条数就归档）。
 6. **告诉用户**课程已完结——总结部分的路径、`status` 已标记 `completed`、**收尾门禁的结果**（积压清零 / 降级 k 条到自学清单 / 经你确认强制完结）；随时可用 `/lathe 续写 <slug>` 重新开放，或用 `/lathe 验证 <slug>` 确认最终可用性。降级过的条目补一句「想学时说『把自学清单里的 X 讲掉』即可重新入队」。
 
 > **面试文档**：收尾部分**不产出面试分段**，也**不写入**面试文档——总结部分不是教学部分（它是全课程回顾 + 知识图谱 + 目标对照，不含新要点，见 `interview.md` 的「教学部分」定义）。即使用户写 `/lathe 续写 收尾 <slug> 面试`，同样不写。
 
 ## 边界
 
-- 写入新的 `part-NN.md`（常规或总结）、更新 `metadata.json` 与 `syllabus.json` 是**教程侧**唯一的文件写入操作（`research.md` 的归档小节按需追加）。
+- 写入新的 `part-NN.md`（常规或总结）、更新 `metadata.json` 与 `syllabus.json` 是**教程侧**唯一的文件写入操作（`research.md` 的归档小节按需追加）。**发现归档条目放错小节时可以在同一文件内就地归位**——把整条移到正确的小节下、内容一字不改，这不算「改写教程内容」；同一主题已有档案时新条目里注明「同一条已在下方建过档」，不重复计、也不删旧的。任何情况下都不动 `part-*.md` 正文。
 - **面试文档是附加写入**：只追加一个新分段并更新进度表对应行，**不修改任何已有分段**；文档不存在时**不得创建文件**（除非本次带 `面试` token）；**自动同步路径绝不自动补写历史缺口**，只在结果里提示。
 - 不要运行 `/lathe 验证`（不写 `verify-result.json`、不改状态横幅与 `status`）——writing-core.md「交付前试跑」在临时目录里跑本部分代码不属于验证，照常要做；不要写 `index.md`，不要写多个部分，不要编辑现有部分。
 - 常规续写不得在未经收尾模式的情况下自行将 `status` 置为 `completed`。

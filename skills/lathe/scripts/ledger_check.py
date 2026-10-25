@@ -4,6 +4,8 @@
 用法：
     python3 <SKILL_DIR>/scripts/ledger_check.py <教程目录>
     python3 <SKILL_DIR>/scripts/ledger_check.py <教程目录> --receipt part-03.md
+    python3 <SKILL_DIR>/scripts/ledger_check.py <教程目录> --finish        # 收尾门禁缺口分组
+    python3 <SKILL_DIR>/scripts/ledger_check.py <教程目录> --continuity    # 索引预算与归档建议
 
 检查 references/knowledge-ledger.md「账本不变量」的全部机械可查项：
   字段与状态合规、id 唯一、ID 镜像（metadata.syllabus_ids）、queued = knowledge_backlog、
@@ -11,7 +13,7 @@
   一行一条与可选字段省略、积压条目字段与上限、正文里档 3 提醒带积压 ID 且不过期。
 --receipt 额外打印该 part 的「本部分覆盖」行，供覆盖回执直接粘贴。
 
-退出码：0 = 闭合（可能有警告）；1 = 有不一致；3 = 账本不存在（旧教程，需要回填）。
+退出码：0 = 闭合（可能有警告）；1 = 有不一致；2 = 仅 `--finish`：A 类真欠账非空，收尾门禁拒绝放行（等用户选）；3 = 账本不存在（旧教程，需要回填）。
 """
 
 from __future__ import annotations
@@ -58,7 +60,77 @@ def num_version(value) -> tuple:
     return tuple(int(x) for x in re.findall(r"\d+", str(value or ""))[:3])
 
 
-def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: bool = False) -> int:
+def field_size(value) -> int:
+    """索引字段的「字数」：字符串按字符数，数组/对象按各值字符数之和（含分隔符）。"""
+    if isinstance(value, str):
+        return len(value)
+    if isinstance(value, list):
+        return sum(field_size(x) for x in value) + max(len(value) - 1, 0)
+    if isinstance(value, dict):
+        return sum(field_size(x) for x in value.values()) + max(len(value) - 1, 0)
+    return len(str(value))
+
+
+def report_continuity(metadata: dict) -> int:
+    """`--continuity`：索引预算的实测与归档建议。
+
+    旧预算是「1200 软 / 2000 硬」，但各字段只限**每条字数**、不限**条数**，
+    而 `covered_concepts` 又是只增不删的——三门课就实测 1969 字、六门课必然越界，
+    等于写下一条不可能遵守的规则（实测见 temp/verify-0.6.0-readpath）。
+    现在改成：**先给每个字段定条数上限，再让总预算等于它们之和**，
+    于是预算是可达的；超软上限是**归档信号**（不阻塞交付），超硬上限才需要处理，
+    两种情况都不许用压缩正文来解决。
+    """
+    c = metadata.get("continuity") or {}
+    if not c:
+        print("ℹ️ metadata 里没有 continuity 摘要：下次续写会按路径 B 重建，本次无从计算预算")
+        return 0
+    soft, hard = 2200, 3000
+    caps = {  # 字段 -> (条数上限, 每条/每项字数上限)
+        "covered_concepts": (24, 40), "open_threads": (8, 80), "fixed_numbers": (18, 40),
+        "exercise_carry": (9, 40), "part_titles": (8, 60),
+    }
+    sizes = {k: field_size(v) for k, v in c.items() if v not in (None, "", [], {})}
+    total = sum(sizes.values())
+    print(f"索引预算：软 {soft} 字 · 硬 {hard} 字 ｜ 实测 {total} 字")
+    for k in sorted(sizes, key=sizes.get, reverse=True):
+        print(f"  {k:<20}{sizes[k]:>5} 字")
+
+    problems, tips = [], []
+    counts = {
+        "covered_concepts": len(c.get("covered_concepts") or []),
+        "open_threads": len(c.get("open_threads") or []),
+        "fixed_numbers": len(c.get("fixed_numbers") or {}),
+        "exercise_carry": sum(len(v or []) for v in (c.get("exercise_carry") or {}).values()),
+        "part_titles": len(c.get("part_titles") or {}),
+    }
+    for k, (cap, _) in caps.items():
+        if counts[k] > cap:
+            problems.append(f"{k} {counts[k]} 条 > 上限 {cap} 条")
+            tips.append(f"{k}：把最旧的 {counts[k] - cap} 条按归档顺序移到 research.md 对应小节（概念仍算已讲、伏笔仍算记录，不删）")
+    for key in ("controlling_example", "next_hook", "metaphor"):
+        if sizes.get(key, 0) > 200:
+            problems.append(f"{key} {sizes[key]} 字 > 200 字")
+    if total > hard:
+        print(f"❌ 超硬上限 {total - hard} 字" + (f"（另有 {len(problems)} 项条数超限）" if problems else ""))
+        for t in (tips or ["各字段条数都在上限内：优先归档 covered_concepts 的旧概念，其次 fixed_numbers"]):
+            print("   - " + t)
+        print("   - **不得压缩正文**：索引超出只归档索引字段")
+        return 1
+    if problems:
+        print("⚠️ 字段条数超限（索引还能用，但下次写回要归档）：")
+        for x in problems:
+            print("   - " + x)
+        return 0
+    if total > soft:
+        print("⚠️ 超软上限：归档一次索引字段即可（不阻塞交付，也不许压缩正文）")
+        return 0
+    print("✅ 索引在预算内")
+    return 0
+
+
+def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: bool = False,
+          continuity: bool = False) -> int:
     errors: list[str] = []
     warnings: list[str] = []
     drifted: list[str] = []
@@ -67,6 +139,8 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: b
         print(f"❌ {meta_path} 不存在：先按 metadata.md「metadata.json 自愈」重建")
         return 1
     metadata = load_json(meta_path)
+    if continuity:
+        return report_continuity(metadata)
     part_versions = metadata.get("part_versions", {}) or {}
     tutorial_version = num_version(metadata.get("lathe_version"))
     legacy = force_legacy or tutorial_version < (0, 6, 0)
@@ -98,6 +172,14 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: b
     backlog = metadata.get("knowledge_backlog", []) or []
     part_heads = {p: set(headings((root / p).read_text(encoding="utf-8"))) for p in parts if (root / p).exists()}
     written = {part_number(p) for p in parts if "-review" not in p}
+    # 教学部分 = 排除复习部分与总结部分（总结部分没有 ## 检查点）。
+    # course_plan 的 `part` 与账本的 `plan_ref` 数的是**第几个教学部分**，不是文件名编号——
+    # 复习材料（part-04-review）与总结部分（part-05）都会占用文件名，
+    # 用编号相等判定会让 plan_ref=4 永远进不了「已覆盖」，④ 保留的 planned 就再也没人查。
+    teaching = [x for x in parts
+                if "-review" not in x and (root / x).is_file()
+                and any(h.startswith("检查点") for h in headings((root / x).read_text(encoding="utf-8")))]
+    covered_items = set(range(1, len(teaching) + 1))
 
     if ledger.get("slug") != metadata.get("slug"):
         errors.append(f"slug 不一致：账本 {ledger.get('slug')!r} ≠ metadata {metadata.get('slug')!r}")
@@ -165,13 +247,17 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: b
             errors.append(f"{tag} promised_by 要写成 part-NN.md：{promised!r}")
         if status == "planned" and promised:
             ref = pt.get("plan_ref")
-            if isinstance(ref, int) and ref in written:
+            ref_is_covered = isinstance(ref, int) and ref in covered_items
+            if status == "planned" and promised and (ref_is_covered or metadata.get("status") == "completed"):
+                errors.append(
+                    f"{tag} 已承诺未兑现且课程已完结：{promised} 答应在 Part {ref} 讲，"
+                    f"但 `status = completed`——完结后这条承诺永远不会兑现（收尾门禁应拦住，或按 ④ 时须先清掉 A 类）"
+                )
+            elif ref_is_covered:
                 errors.append(
                     f"{tag} 已承诺未兑现：{promised} 的练习承接说好在 Part {ref} 讲，"
                     f"该部分已写完但状态仍是 planned——改 taught，或退回 queued 并在正文留提醒"
                 )
-        if status == "taught" and promised and pt.get("depth") != "tier1":
-            warnings.append(f"{tag} 是练习承接留下的承诺，讲掉后 depth 应为 tier1（当前 {pt.get('depth')!r}）")
         if status == "duplicate" and not pt.get("dup_of"):
             errors.append(f"{tag} duplicate 没写 dup_of")
         if status in ("self-study", "dropped_by_user") and not pt.get("note"):
@@ -191,9 +277,9 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: b
                     item = plan[ref - 1]
                 if item is None:
                     errors.append(f"{tag} planned 的 plan_ref {ref} 在 course_plan 里不存在")
-                elif item.get("part") in written:
+                elif item.get("part") in covered_items:
                     if not promised:  # 已承诺未兑现另有专门一条，别重复报
-                        errors.append(f"{tag} 仍是 planned，但所属 plan 项（Part {item.get('part')}）已经写完——悬空条目")
+                        errors.append(f"{tag} 仍是 planned，但它是第 {item.get('part')} 个教学部分的内容而该部分已写完——悬空条目")
 
     queued = {pt.get("id") for pt in points if pt.get("status") == "queued"}
     backlog_ids = {b.get("id") for b in backlog}
@@ -235,7 +321,8 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: b
         debt = [pt["id"] for pt in points if pt.get("status") == "queued"]
         broken_promise = [pt["id"] for pt in points
                           if pt.get("status") == "planned" and pt.get("promised_by")
-                          and isinstance(pt.get("plan_ref"), int) and pt["plan_ref"] in written]
+                          and (pt.get("plan_ref") in covered_items
+                               or metadata.get("status") == "completed")]
         roadmap = {}
         for pt in points:
             if pt.get("status") == "planned" and pt["id"] not in broken_promise:
@@ -248,12 +335,19 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: b
             print(f"  B 类未开工路线项（{tag}）：{'、'.join(roadmap[ref])}")
         print(f"  course_plan 还没有常规部分的项：{sorted(dangling_plan) or '无'}")
         if debt or broken_promise:
-            print("  → A 类非空：只能 ① 补写 Part / ② 逐条降级 / ③ 强制完结")
+            print("  → A 类非空：只能 ① 补写 Part / ② 逐条降级 / ③ 强制完结"
+                  "（必须由用户选；本脚本以 exit 2 表示「门禁拒绝放行」）")
         elif roadmap or dangling_plan:
             print("  → 只有 B 类：默认 ④ 按现状完结（保留 planned、不改状态，总结的未讲清单如实列出）")
         else:
             print("  → 无缺口：门禁通过")
-        return 0 if not errors else 1
+        for w in warnings:
+            print(f"⚠️ {w}")
+        for e in errors:
+            print(f"❌ {e}")
+        if errors:
+            return 1
+        return 2 if (debt or broken_promise) else 0
 
     if receipt:
         mine = [pt for pt in points if pt.get("status") == "taught" and (pt.get("at") or "").startswith(receipt + "#")]
@@ -289,8 +383,9 @@ def main() -> int:
     ap.add_argument("--receipt", metavar="PART", help="打印该 part 的「本部分覆盖」行，如 part-03.md")
     ap.add_argument("--legacy", action="store_true", help="按 0.6.0 之前的规则检查（档 3 积压 ID 一条降级）")
     ap.add_argument("--finish", action="store_true", help="按收尾门禁口径分组打印缺口（A 类真欠账 / B 类未开工路线项）")
+    ap.add_argument("--continuity", action="store_true", help="只报索引预算（按常规部分数伸缩）与归档建议")
     args = ap.parse_args()
-    return check(Path(args.tutorial_dir), args.receipt, args.legacy, args.finish)
+    return check(Path(args.tutorial_dir), args.receipt, args.legacy, args.finish, args.continuity)
 
 
 if __name__ == "__main__":

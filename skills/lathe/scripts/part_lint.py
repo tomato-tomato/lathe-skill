@@ -10,8 +10,13 @@
   代码块类型（未标记、runnable 含整行 ...、fragment 无最终 runnable/检查点、exercise 无答案）、
   必做练习引入新概念 ≤2（按档 3 提醒计）、选做练习附文档链接、ASIDE ≤2、PREDICT ≥1、
   来源条数、正文长度与单块行数的软阈值。
+  `--kind finish`（或没有 `## 检查点` 时自动判定）改查总结部分的七个小节（全课程回顾 / 知识图谱 /
+  目标对照 / 未讲清单 / 回顾自检 / 练习方向 / 寄语），并要求**不出现**检查点、你将构建什么、
+  前置条件、来源、验证状态横幅（写了横幅就是一句永不撤销的假承诺）。
   `--kind review`（或文件名含 `-review` 自动判定）改查复习材料的六个必备小节、顺序、
-  是否覆盖全部常规部分、H1 格式与教学标注；不查验证横幅与教程结构。
+  是否覆盖全部常规部分、H1 格式、教学标注，并逐块校验「摘录保真」
+  （每个围栏块必须是同目录某个常规部分原文的连续子串——这是「复习可以只定点读取」的前提）；
+  不查验证横幅与教程结构。
 最后一行打印构建章节数，供覆盖回执的「实写 N 章」使用。
 
 **只检查本次新写/改动的部分。** 教程 `metadata.json` 的 `lathe_version` 低于 0.6.0 时，
@@ -34,6 +39,8 @@ from lathe_common import code_blocks, headings, part_number, section, strip_code
 
 REGULAR_SECTIONS = ("你将构建什么", "前置条件", "检查点", "接下来", "练习", "来源")
 REVIEW_SECTIONS = ("逐部分回顾", "自测", "重跑检查点", "学习目标回顾", "还没讲到的", "还可以继续深入的方向")
+FINISH_SECTIONS = ("全课程回顾", "知识图谱", "目标对照", "未讲清单", "回顾自检", "练习方向", "寄语")
+FORBIDDEN_IN_FINISH = ("检查点", "你将构建什么", "前置条件", "来源")
 CONTRACT_LINES = ("本部分结束时的文件状态", "下一部分起始状态", "本部分不覆盖", "练习承接")
 ELLIPSIS = re.compile(r"^\s*(?://|#|--)?\s*(?:\.\.\.|…)\s*$", re.MULTILINE)
 
@@ -72,11 +79,13 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
         notes.append(f"该部分由 v{write_version(path) or '未知（≤0.5.x）'} 写成，0.6.0 新增约束按历史部分降级为 ℹ️")
     if kind == "auto":
         kind = "review" if "-review" in path.name else ("regular" if "检查点" in heads else "finish")
+    if kind == "finish":
+        notes.append("按总结部分（finish）结构检查：七节齐全、不含检查点/契约行/横幅")
     number = part_number(path.name)
 
     if not text.lstrip().startswith("# "):
         errors.append("第一行必须是一级标题 `# `")
-    if kind != "review" and "lathe:verify-status:start" not in text:
+    if kind not in ("review", "finish") and "lathe:verify-status:start" not in text:
         warnings.append("缺少验证状态横幅（新写的 part 必须在 H1 后插入未验证横幅）")
 
     if kind == "regular":
@@ -106,6 +115,21 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
         if text.count("[!PREDICT]") == 0:
             warnings.append("检查点前没有 > [!PREDICT]")
 
+    if kind == "finish":
+        missing = [x for x in FINISH_SECTIONS if not any(x in h for h in heads)]
+        if missing:
+            errors.append(f"总结部分缺少小节：{missing}")
+        extra = [h for h in heads if any(h.startswith(x) for x in FORBIDDEN_IN_FINISH)]
+        if extra:
+            errors.append(f"总结部分不该有这些小节：{extra}")
+        faked = [x for x in CONTRACT_LINES if f"**{x}" in text]
+        if faked:
+            warnings.append("总结部分写了契约行（没有下一部分可交接）：" + "、".join(faked))
+        if text.count("[!PREDICT]") or text.count("[!RECALL]"):
+            warnings.append("总结部分不用教学标注（回顾自检直接用普通问题）")
+        if "lathe:verify-status:start" in text:
+            errors.append("总结部分不该带验证状态横幅（它永不参与验证，横幅是永不撤销的假承诺）")
+        print("总结部分：七节" + ("齐全 ✅" if not missing else "不全 ❌"))
     if kind == "review":
         missing = [x for x in REVIEW_SECTIONS if not any(x in h for h in heads)]
         if missing:
@@ -128,6 +152,19 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
             warnings.append("复习材料不用教学标注（PREDICT / ASIDE）")
         if text.count("[!RECALL]") > 1:
             warnings.append("复习材料的 [!RECALL] 最多 1 个")
+        # 摘录保真：每个围栏块必须是某个常规部分原文的连续子串
+        sources = {f.name: f.read_text(encoding="utf-8")
+                   for f in sorted(path.parent.glob("part-*.md"))
+                   if f.name != path.name and "-review" not in f.name}
+        lost = []
+        for b in code_blocks(text):
+            body = b["body"].strip()
+            if body and not any(body in src for src in sources.values()):
+                lost.append(f"第 {b['line']} 行 {b['type']} 块（{len(body)} 字符）")
+        if lost:
+            errors.append("摘录不是原文逐字子串（改写了/拼接了/漏了标注）：" + "；".join(lost[:4]))
+        elif sources:
+            notes.append(f"摘录保真：{len([b for b in code_blocks(text) if b['body'].strip()])} 个块全部为原文逐字子串 ✅")
 
     blocks = code_blocks(text)
     types = [b["type"] for b in blocks]

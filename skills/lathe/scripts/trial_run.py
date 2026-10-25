@@ -168,11 +168,16 @@ def main() -> int:
             shutil.rmtree(work, ignore_errors=True)
 
     auto = tally["pass"] + tally["fail"]
-    print(
-        f"试跑：runnable {tally['pass']}/{auto} 通过"
-        f" · 需拼工程 {tally['project']} · 命令块待手动 {tally['manual']} · 未执行 {tally['skip']}"
-        f"（edition {edition}{'，已运行' if args.run else '，仅编译'}）"
-    )
+    if auto == 0 and tally["manual"] == 0:
+        # 总结部分、纯推导部分本来就没有 runnable——「0/0 通过（已运行）」会被读成「验证过了」
+        print("试跑：本部分没有 runnable / expected_failure 块，无需试跑"
+              "（回执里这一行写「无 runnable，未试跑」即可）")
+    else:
+        print(
+            f"试跑：runnable {tally['pass']}/{auto} 通过"
+            f" · 需拼工程 {tally['project']} · 命令块待手动 {tally['manual']} · 未执行 {tally['skip']}"
+            f"（edition {edition}{'，已运行' if args.run else '，仅编译'}）"
+        )
     return 1 if tally["fail"] else 0
 
 

@@ -141,17 +141,28 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `controlling_example` | 贯穿全课程的具体产物（如"名为 `pebble` 的键值存储，能在 `kill -9` 后存活"）。续写必须精确复用，不得替换 |
 | `fixed_numbers` | 已锁定的领域数字（采样率、缓冲区大小、端口、超时等）。续写引用同一数字，不得漂移 |
 | `metaphor` / `metaphor_retired` | 控制性隐喻及是否已明确告别。已告别则续写不再重启该隐喻 |
-| `covered_concepts` | 已讲透的概念清单——续写据此避免重复教学，也是 `[!RECALL]` 的取材池。**只追加、不合并、不删除**，每项 ≤40 字 |
-| `open_threads` | 已提出但尚未展开的问题/伏笔（最多 10 条，每条 ≤80 字）——续写优先回收；已解决/溢出时移到 `research.md` 的 `## Open Threads Archive`，不删除 |
+| `covered_concepts` | 已讲透的概念清单——续写据此避免重复教学，也是 `[!RECALL]` 的取材池。**只追加、不合并、不删除**，每项 ≤40 字，**索引里只留最近 24 条**（更旧的归档，仍算已讲） |
+| `open_threads` | 已提出但尚未展开的问题/伏笔（**最多 8 条**，每条 ≤80 字）——续写优先回收；已解决/溢出时移到 `research.md` 的 `## Open Threads Archive`，不删除 |
 | `exercise_carry` | 本部分练习的承接分流结果（0.6.0 新增）：`{integrated: [], chapter: [], deferred: []}`，各 ≤3 条、每条 ≤40 字。`integrated` = 已融进某条知识点；`chapter` = 已进承接章节；`deferred` = 顺延（同时进 `knowledge_backlog`）。续写读它决定下一部分怎么接；讲透后从对应数组移除并追加进 `covered_concepts` |
 | `next_hook` | 最后一部分"接下来"指向的方向——这就是下次续写的默认任务（≤200 字） |
 | `part_titles` | 文件名 → 一级标题映射。让 list、复习、收尾无需打开文件即可获得标题 |
 | `updated_through` | 摘要覆盖到哪个部分——新鲜度判定依据 |
 | `updated_at` | 最后一次写回 continuity 的时间；也用于 part mtime 的手工编辑检测。必须在所有 part 写入之后刷新；verify 只改状态横幅时也会刷新，正文修改时不刷新 |
 
-**写入契约：** 每次写入新部分后**增量更新**——追加本部分新增的概念与数字、更新 `open_threads`、**覆盖 `exercise_carry` 为本部分练习的分流结果**、覆盖 `next_hook`、更新 `part_titles`、`updated_through`、`updated_at`。不要重写已有条目（除非确实变更）。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；分字段上限：`controlling_example` ≤200 字、`next_hook` ≤200 字、`covered_concepts` 每项 ≤40 字、`fixed_numbers` 每个值 ≤40 字、`open_threads` 每条 ≤80 字、`exercise_carry` 各数组 ≤3 条且每条 ≤40 字。**宁可多存 200 字，也不要让下次续写重读全部部分。** 若 `covered_concepts` 本身已接近硬上限，优先把不再被 `[!RECALL]` / 续写引用的旧概念归档到可选 `research.md`，而不是删除或合并它们。它是索引，不是缩写版教程。
+**写入契约：** 每次写入新部分后**增量更新**——追加本部分新增的概念与数字、更新 `open_threads`、**覆盖 `exercise_carry` 为本部分练习的分流结果**（**收尾例外**：总结部分没有练习，`exercise_carry` / `covered_concepts` / `fixed_numbers` 一律原样保留，覆盖会把仅存的承诺记录清空——见 extend.md 收尾步骤 5）、覆盖 `next_hook`、更新 `part_titles`、`updated_through`、`updated_at`。不要重写已有条目（除非确实变更）。**预算必须是可达的**（0.6.0 修正）：旧写法只给「1200 软 / 2000 硬」的总量加「每条 ≤N 字」的单条上限，**却没有限制条数**——而 `covered_concepts` 只增不删，三门课实测就 1969 字、六门课必然越界，等于写了一条不可能遵守的规则（真越界时的风险是回头压缩正文）。现在**先定条数上限，总量等于它们之和**：
 
-**`knowledge_backlog` 与 `continuity` 的分工：** `continuity` 是**已发生事实的摘要**（讲透了什么、留了什么伏笔），受 2000 字硬上限约束；`knowledge_backlog` 是**尚未发生事项的队列**（还没讲的条目），放顶层、不受 `continuity` 预算约束。**不要把清单塞进 `continuity`**——12 条清单约 500 字，会直接把索引挤爆。
+| 字段 | 条数上限 | 单条上限 | 超了怎么办 |
+|---|---|---|---|
+| `covered_concepts` | 索引里留最近 **24 条** | ≤40 字 | 更旧的移到 `research.md` 的 `## Covered Concepts Archive`（**仍算已讲**，不删不合并） |
+| `open_threads` | **8 条** | ≤80 字 | 已解决的移到 `## Open Threads Archive` |
+| `fixed_numbers` | **18 项** | ≤40 字 | 后续部分不再复用的移到 `## Covered Concepts Archive` 一行说明或直接留在 `research.md` |
+| `part_titles` | 最近 **8 个部分** | ≤60 字 | 更早的标题不留（`/lathe 列表` 与复习按 `grep -m1 '^# '` 现取，成本一行命令） |
+| `exercise_carry` | 三个数组各 ≤3（合计 9） | ≤40 字 | 已讲透的移除并追加进 `covered_concepts` |
+| `controlling_example` / `next_hook` / `metaphor` | 各 1 | ≤200 字 | 精简表述，不缩短正文 |
+
+**总量：软上限 2200 字 / 硬上限 3000 字**（= 上表之和的最大值），这是**索引预算，不是正文预算**。写回 `metadata.json` 后跑 `ledger_check.py <教程目录> --continuity`：它按上表逐字段实测并给出该归档哪几条。**超条数或超软上限都不是失败**（不阻塞交付），超硬上限才必须归档；**两种情况都不得用压缩正文解决**。**宁可多存 200 字，也不要让下次续写重读全部部分**——它是索引，不是缩写版教程。
+
+**`knowledge_backlog` 与 `continuity` 的分工：** `continuity` 是**已发生事实的摘要**（讲透了什么、留了什么伏笔），受 3000 字硬上限约束（且须先守住上面的条数上限）；`knowledge_backlog` 是**尚未发生事项的队列**（还没讲的条目），放顶层、不受 `continuity` 预算约束。**不要把清单塞进 `continuity`**——12 条清单约 500 字，会直接把索引挤爆。
 
 `open_threads` 超过 10 条，或某个线程已经解决/不再需要跟进时，移动到 `research.md` 的 `## Open Threads Archive`；归档条目写清楚：问题、提出部分、状态（resolved / deferred / superseded）、解决部分（如有）、备注/来源。**归档不是删除**；续写/复习/收尾在需要时可读取相关小节。
 
@@ -211,6 +222,13 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 **`## Covered Concepts Archive` 的语义：** `covered_concepts` 接近索引硬上限时，把不再被 `[!RECALL]` / 续写引用的旧概念移到这里；**它们仍算已讲**，复习、收尾、去重都要读这一节。
 
 **`## Self-study Backlog` 的语义（0.6.0 新增）：** 只有用户在闸门里**显式选 ②**、或收尾门禁里显式选择降级的条目才放这里，**必须保留原 ID**（复习与收尾按 ID 列出）。**教程不承诺讲它们**，但内容留档；用户想捡回来时说「把自学清单里的 X、Y 讲掉」即可按原 ID 重新入队。它不是 `knowledge_backlog` 的副本——同一条只能出现在一边。
+
+**归档条目的写法规范（0.6.0 第二批）——这四条是硬要求，因为复习与收尾要把这些节当「覆盖核对」的输入：**
+
+- **一条一个条目，禁止合写。** `## Open Threads Archive` 里每条独占一个 `### <简短标题>` 块，`提出于` / `解决于` **各自只能写一个具体部分**（`part-NN`）。像「解决于 part-02（前两条）/ part-03（后三条）」「同上」这种**按列表位置或合写的指代一律不允许**——条目顺序一变就完全无法定位，也无法判断某条到底解没解决。
+- **状态与解决部分必须同时存在。** `状态：resolved` 就必须有 `解决于：part-NN`；`deferred` / `superseded` 就写 `解决于：—` 并在 `备注/来源` 说明去向。
+- **`## Covered Concepts Archive` 只收概念名。** 一行一个：`- <概念>（讲于 part-NN，<日期> 从 continuity 归档）`。**未决线索、带状态的改造项、边界讨论不得混进这一节**（它们属于 `## Open Threads Archive`）——这一节是「讲过什么」的证据池，混进去会让复习把未讲的东西算成已覆盖。
+- **读旧格式要容错。** 复习、收尾读到不符合上述写法的归档（合写、缺 `解决于`、概念节里有状态），**不采信它的解决结论**：改读 `continuity.open_threads` 与各部分正文的「本部分不覆盖」，并在结果里一句提示「归档条目无法定位，按正文重建结论」。旧归档不要求迁移，也不得为了「修好它」去改写旧部分。
 
 **`## Errata` 的语义：** 提问（ask）发现教程有误、经用户确认后的处理记录（无论原地修正还是只记勘误）。续写时读它：「只记勘误」的条目要在下一部分的 `> [!RECALL]` 或相关章节用一句话更正。**`影响面` 是必填项**——同一个错误通常同时存在于教学部分正文、`runnable` 代码注释、复习材料与账本 `at`，漏记就会留下互相矛盾的副本。
 

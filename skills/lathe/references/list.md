@@ -15,7 +15,7 @@
    > **内容变更检测：** 若某 part 在 `verify-result.json` 中为 `passed`，但该 part 文件的修改时间晚于 `checked_at`，在列表中标记为 **“内容已变更，需重新验证”**，不要继续显示 `passed`。只取文件 mtime，不读正文；`-review` 复习材料不参与；“增量复用跳过”（`skipped_reuse`）同样按此判断。`checked_at` 缺失时跳过本检测。若 `verify-result.json` 的 `changed_interfaces_snapshot` 与当前 `metadata.changed_interfaces` 不一致，也标记 **“接口已变更，需重新验证”**。
 
    > **成本约束（重要）：本操作绝不读取 `part-NN.md` 的全文。** 一个多课程目录的正文动辄数十万字符，而列表只需要每个部分的一级标题。按以下优先级取标题：
-   > 1. **`metadata.json` 的 `continuity.part_titles`** —— 已有映射则直接用，零文件读取；
+   > 1. **`metadata.json` 的 `continuity.part_titles`** —— 已有映射则直接用，零文件读取；**它按索引瘦身规则只保留最近 8 个部分，更早的部分在这里缺标题是正常状态**（不是数据损坏），缺的那些走第 2 档；
    > 2. 映射缺失或不完整时，用 shell **只取标题行**：`grep -m1 '^# ' <文件>`（或 `head -n 1`），单次可对整个目录批量执行：`grep -m1 -H '^# ' <目录>/part-*.md`；
    > 3. **不要**用文件读取工具打开 part 文件来找标题。
 3. **识别每个教程的编程语言**（用于分组）：
@@ -38,8 +38,20 @@
    ```
 
    - **积压行只在 `metadata.knowledge_backlog` 非空时显示**；`n` = 数组长度，`m` = 其中 `priority == "core"` 的条数。为空时整行省略，不显示「积压：0 条」。**这一行只读 metadata，不读取正文或 `research.md`**（自学清单条数只在单教程详情里读）。
+   - **紧接着再显示一行账本计数**（教程目录存在 `syllabus.json` 时，只按 `status` 计数、不逐条读）：`账本：taught a · queued b · planned c（共 n）`。`planned` 是「路线图还欠几个 Part」的唯一可见指标——只显示积压会让人以为课程没有欠着的正文部分。没有账本时显示 `账本：未建立（下次续写会回填）`，与积压行同时出现时提示一句「积压来自 0.5.x 投影，建账后以账本为准」（旧教程常有积压却无账本，两个数字对不上）。
    - 部分列表来自 `metadata.json` 的 `parts` 数组，各部分标题按第 2 步的取标题优先级获得。文件名含 `-review` 后缀的在标题后标注 *（复习）*。
-   - 若验证结果含逐部分明细（`parts` 数组），在对应部分后标注 `✅ passed` / `❌ failed` / `⏭️ skipped` / `⏭️ not_run`（`-review` 复习材料不参与验证，无标注）。若该部分为 `passed` 但内容已变更（part mtime 晚于 `checked_at`），改标 `⚠️ 内容已变更，需重新验证`。
+   - 若验证结果含逐部分明细（`parts` 数组，**每条按 `part` 字段匹配文件名、按 `status` 字段取状态**），在对应部分后按下表标注：
+
+     | `status` | 显示 |
+     |---|---|
+     | `passed` | `✅ passed` |
+     | `failed` | `❌ failed`（附 `failed_step`） |
+     | `skipped` | `⏭️ skipped`（附 `reason`） |
+     | `not_run` | `⏭️ not_run` |
+     | `not_applicable` | `—（复习材料不参与验证）`，不算未验证 |
+
+     若该部分为 `passed` 但内容已变更（part mtime 晚于 `checked_at`），改标 `⚠️ 内容已变更，需重新验证`。
+     **条目里带 `historical_steps` 时另加一句**：`其中 N 组检查点已按 changed_interfaces.supersedes 记为历史预期`（如 `part-01.md#3`）——被登记作废的检查点组是「跳过的」而不是「跑过的」，不显示出来读者会以为整部分干净通过。`fixes` 非空时附一句「验证中做过 N 处修正」。
    - `status` 为 `completed` 的课程，在状态列显示 `⭐ completed（已完结）`。
    - **验证中断检测：** `verify-result.json` 的 `status` 为 `verifying` 且 `checked_at` 超过 **6 小时**前，说明上次验证中途中断。标注为 `⚠️ 验证可能中断（停留于 <checked_at>）` 并提示重新运行 `/lathe 验证 <slug>` 即可复位（增量复用会从断点继续）。
 6. **metadata 缺失的教程**单独列为一组，逐条标注 *⚠️ metadata 缺失*（附目录位置与发现的 part 文件数），并提示：运行 `/lathe 标签 <slug>` 或任一写入型操作可按 `<SKILL_DIR>/references/metadata.md`"metadata.json 自愈"重建索引。

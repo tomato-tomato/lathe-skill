@@ -73,7 +73,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 **反向清单——明确不要读取**（读多了会挤占上下文并拖慢执行）：
 
 - **生成新教程：** 读 `writing-core.md` + `knowledge-ledger.md` + `generate.md`；不要读 `extend.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`；`voice.md` 仅在 voice 非 `plainspoken` 时读；`metadata.md` 仅在字段速查表不足或需自愈时读；`interview.md` **仅在本次带 `面试` 参数时**读。
-- **续写 / 收尾：** 读 `writing-core.md` + `knowledge-ledger.md` + `extend.md`（+ `metadata.md`）；不要读 `generate.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`。**`interview.md` 是例外**——该教程已有面试文档时读它以追加本部分分段，或带 `面试` 参数时读它以创建文档。
+- **续写 / 收尾：** 读 `writing-core.md` + `knowledge-ledger.md` + `extend.md`（+ `metadata.md`）；**收尾例外**——门禁判定阶段只读 `SKILL.md` + `extend.md` 的收尾节 + 教程的 metadata/账本（那两个共享文件合计约 63 KB，被拒绝时白读），**通过后**再加载 `writing-core.md` 与 `knowledge-ledger.md` 吸收正文与写总结（见 extend.md 的加载顺序说明）；不要读 `generate.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`review.md`、`ask.md`、`tag.md`。**`interview.md` 是例外**——该教程已有面试文档时读它以追加本部分分段，或带 `面试` 参数时读它以创建文档。
 - **复习：** 不要读 `knowledge-ledger.md`（只读 `syllabus.json` 数据）、`generate.md`、`extend.md`、`style-benchmarks.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`；**含 `面试` token 时改读 `interview.md`**（本文件下方协议不再适用）。
 - **面试文档：** 不要读 `knowledge-ledger.md`、`generate.md`、`extend.md`、`review.md`、`verify.md`、`list.md`、`scan.md`、`ask.md`、`tag.md`、`style-benchmarks.md`；`metadata.md` 仅在需自愈时读。
 - **验证：** 不要读 `writing-core.md`、`knowledge-ledger.md`、`generate.md`、`extend.md`、`review.md`、`interview.md`、`style-benchmarks.md`。
@@ -171,7 +171,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 **知识点账本 `syllabus.json`**（与 `metadata.json` 并列）：课程承诺讲的每个知识点一条记录，六种状态 `planned` / `queued` / `taught` / `self-study` / `dropped_by_user` / `duplicate`，**状态改变时改字段、永不删除条目**；`knowledge_backlog` 是其中 `queued` 条目的投影，`metadata.syllabus_ids` 是它的 ID 镜像（用来发现被整条删掉的条目）。生成时创建，续写/收尾维护，复习与列表只读。规范见 [references/knowledge-ledger.md](references/knowledge-ledger.md)。
 
-**检查脚本（`scripts/`，纯标准库 Python 3）**：`ledger_check.py`（账本对账）、`part_lint.py`（单个 part 结构检查，`--kind review` 查复习材料）、`trial_run.py`（交付前试跑）。写作型操作有 shell 时必须跑，**但只跑本次新写/改动的部分**（检查 0.6.0 之前的历史部分时加 `--legacy`），回执里的数字粘贴脚本输出；复习只跑 `part_lint.py --kind review`，不跑账本与试跑脚本；没有 shell 时按 `knowledge-ledger.md`「人工核对清单」核对。
+**检查脚本（`scripts/`，纯标准库 Python 3）**：`ledger_check.py`（账本对账；`--receipt` 出回执行、`--finish` 按 A/B 类分组打印收尾门禁缺口并在拒绝时 `exit 2`、`--continuity` 实测索引预算与条数上限）、`part_lint.py`（结构检查；`--kind regular|finish|review` 三种档位分别对应常规部分 / 总结部分 / 复习材料）、`trial_run.py`（交付前试跑）。写作型操作有 shell 时必须跑，**但只跑本次新写/改动的部分**（检查 0.6.0 之前的历史部分时加 `--legacy`），回执里的数字粘贴脚本输出；复习只跑 `part_lint.py --kind review`（不跑账本与试跑脚本）；收尾写完后跑 `ledger_check.py`、`--continuity` 与 `part_lint.py --kind finish`；没有 shell 时按 `knowledge-ledger.md`「人工核对清单」核对。
 
 **任何字段缺失都必须可降级运行**——按 metadata.md 的规则推断，并在本次写回时补上，绝不因缺字段中止操作。
 
@@ -203,6 +203,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 - **跳过**：`parts` 中状态为 `skipped` 时写 NOTE，写“验证跳过：<原因>”；全局 `skipped` 且没有 `parts` 时不改横幅，保留未验证警告。
 - **通过**：移除整个标记块，不写“已验证”正面横幅。
 - `completed` 不特殊处理；未验证/失败/跳过仍显示对应横幅。
+- **复习材料（`part-NN-review.md`）与总结部分（`/lathe 续写 收尾` 产出的 `part-NN.md`）不写横幅**：两者都没有 `runnable` / 检查点，`/lathe 验证` 对它们无事可做，写「尚未通过端到端验证」就是一句永不撤销的假承诺；`part_lint.py` 的 `--kind review` / `--kind finish` 也不因缺横幅而警告（`--kind finish` 反过来会**拒绝**出现的横幅）。
 - 旧 part 没有横幅：verify 在失败/跳过时可以插入；通过时不添加。
 - 增量复用跳过（`skipped_reuse`）的 part 不修改横幅。
 - **写入顺序：** verify 必须先更新横幅，再写 `verify-result.json` 的 `checked_at`；否则 part 的 mtime 会晚于 `checked_at`，下次增量复用会误判为“内容已变更”。

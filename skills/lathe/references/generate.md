@@ -122,7 +122,7 @@
 | `tools` | 与读者锁定的每个工具链版本一条 |
 | `sources` | 研究期间查阅的 URL，无网络访问则为空 |
 | `voice` / `model` | 使用的 voice 名称 / 你运行的模型（如 `QoderWork`） |
-| `continuity` | **必须初始化**——`controlling_example`、`fixed_numbers`、`metaphor`（无则空串）、`metaphor_retired: false`、`covered_concepts`（本部分讲透的概念，只追加不合并）、`open_threads`（已提出但未展开的问题/伏笔，最多 10 条，每条 ≤80 字）、`exercise_carry`（本部分练习的承接分流结果，见 `metadata.md`；无则三个数组都空）、`next_hook`（`## 接下来` 指向的方向）、`part_titles`（`{"part-01.md": "<一级标题>"}`）、`updated_through: "part-01.md"`、`updated_at`。摘要总量 1200 字软 / 2000 字硬是**索引预算**，不是正文预算；超出时归档，不压缩课程正文。分字段上限见 `metadata.md`。这一步让后续续写无需重读全部历史部分 |
+| `continuity` | **必须初始化**——`controlling_example`、`fixed_numbers`、`metaphor`（无则空串）、`metaphor_retired: false`、`covered_concepts`（本部分讲透的概念，只追加不合并）、`open_threads`（已提出但未展开的问题/伏笔，**最多 8 条**，每条 ≤80 字）、`exercise_carry`（本部分练习的承接分流结果，见 `metadata.md`；无则三个数组都空）、`next_hook`（`## 接下来` 指向的方向）、`part_titles`（`{"part-01.md": "<一级标题>"}`）、`updated_through: "part-01.md"`、`updated_at`。索引预算是 **2200 字软 / 3000 字硬**，但**前提是每个字段守住条数上限**（`covered_concepts` 留最近 24 条、`open_threads` 8 条、`fixed_numbers` 18 项、`part_titles` 最近 8 个部分）——见 `metadata.md`「预算必须是可达的」。超出只归档，**不压缩课程正文**。这一步让后续续写无需重读全部历史部分 |
 
 骨架（字段含义与自愈协议见 `metadata.md`）：
 
