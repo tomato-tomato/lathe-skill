@@ -12,12 +12,17 @@
   来源条数、正文长度与单块行数的软阈值。
 最后一行打印构建章节数，供覆盖回执的「实写 N 章」使用。
 
+**只检查本次新写/改动的部分。** 教程 `metadata.json` 的 `lathe_version` 低于 0.6.0 时，
+0.6.0 才引入的两条约束（档 3 提醒写积压 ID、引入新概念的必做练习 ≤2）降级为 `ℹ️` 提示——
+按旧版规则写的部分不该被判成错误，历史部分也不参与交付自检。
+
 退出码：0 = 无错误（可能有警告）；1 = 有错误。
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -30,14 +35,33 @@ CONTRACT_LINES = ("本部分结束时的文件状态", "下一部分起始状态
 ELLIPSIS = re.compile(r"^\s*(?://|#|--)?\s*(?:\.\.\.|…)\s*$", re.MULTILINE)
 
 
-def lint(path: Path, kind: str) -> int:
+def tutorial_legacy(path: Path) -> bool:
+    """同目录 metadata.json 的 lathe_version 早于 0.6.0（或没有该字段）时判为旧教程。
+
+    这只对「整门课都在 0.6.0 之前写完」有效。旧教程被 0.6.0 续写过一次后
+    `lathe_version` 会升到 0.6.0，此时历史部分仍需显式 `--legacy`。"""
+    meta = path.parent / "metadata.json"
+    version = ""
+    if meta.is_file():
+        try:
+            version = str(json.loads(meta.read_text(encoding="utf-8")).get("lathe_version") or "")
+        except Exception:
+            version = ""
+    nums = tuple(int(x) for x in re.findall(r"\d+", version)[:3])
+    return nums < (0, 6, 0)
+
+
+def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
+    legacy = force_legacy or tutorial_legacy(path)
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
     warnings: list[str] = []
     notes: list[str] = []
     heads = headings(text)
+    if force_legacy:
+        notes.append("已按 --legacy 运行：0.6.0 新增的约束降级为提示（检查历史部分时使用）")
     if kind == "auto":
-        kind = "regular" if "检查点" in heads else "finish"
+        kind = "review" if "-review" in path.name else ("regular" if "检查点" in heads else "finish")
     number = part_number(path.name)
 
     if not text.lstrip().startswith("# "):
@@ -95,12 +119,13 @@ def lint(path: Path, kind: str) -> int:
 
     exercises = section(text, "练习")
     if exercises:
+        sink = notes if legacy else errors
         tier3 = re.findall(r"\*本题涉及的知识点（[^\n]*", exercises)
         for note in tier3:
             if "积压 ID" not in note:
-                errors.append("档 3 练习提醒没有写积压 ID")
+                sink.append("档 3 练习提醒没有写积压 ID")
         if len(tier3) > 2:
-            errors.append(f"引入新概念的必做练习有 {len(tier3)} 道（上限 2）")
+            sink.append(f"引入新概念的必做练习有 {len(tier3)} 道（上限 2）")
         optional = exercises.split("选做", 1)[1] if "选做" in exercises else ""
         for item in re.findall(r"^\d+\.\s.*$", optional, flags=re.MULTILINE):
             if "http" not in item and "](" not in item:
@@ -141,9 +166,11 @@ def lint(path: Path, kind: str) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Lathe 单个 part 静态检查")
     ap.add_argument("part")
-    ap.add_argument("--kind", choices=("auto", "regular", "finish"), default="auto")
+    ap.add_argument("--kind", choices=("auto", "regular", "finish", "review"), default="auto")
+    ap.add_argument("--legacy", action="store_true",
+                    help="按 0.6.0 之前的规则检查（档 3 积压 ID 与练习上限两条降级为提示）")
     args = ap.parse_args()
-    return lint(Path(args.part), args.kind)
+    return lint(Path(args.part), args.kind, args.legacy)
 
 
 if __name__ == "__main__":

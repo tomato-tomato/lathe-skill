@@ -31,18 +31,45 @@ DEPTH = ("full", "foundation", "ch0", "tier1")
 REQUIRED = ("id", "text", "src", "from", "tag", "plan_ref", "status")
 OPTIONAL = ("original", "parent", "at", "depth", "dup_of", "note")
 BACKLOG_FIELDS = ("id", "text", "from", "plan_ref", "priority")
+NUM_HEAD = re.compile(r"^(\d+)[.．、]")
 
 
-def check(root: Path, receipt: str | None) -> int:
+def head_match(head: str, heads: set[str]) -> str:
+    """at 的章节命中方式：exact / number / prefix / none。
+
+    小节标题里可能带数字、措辞也可能因勘误改动，所以带章号的 `at` 优先按章号命中——
+    标题文字变了不算断链（避免「改标题 → 账本自检失败 → 而勘误不许改账本」的死结）。
+    """
+    head = head.strip()
+    if head in heads:
+        return "exact"
+    m = NUM_HEAD.match(head)
+    if m and any(NUM_HEAD.match(h.strip()) and NUM_HEAD.match(h.strip()).group(1) == m.group(1) for h in heads):
+        return "number"
+    if any(h.strip().startswith(head) or head.startswith(h.strip()) for h in heads):
+        return "prefix"
+    return "none"
+
+
+
+def check(root: Path, receipt: str | None, force_legacy: bool = False) -> int:
     errors: list[str] = []
     warnings: list[str] = []
+    drifted: list[str] = []
     meta_path, ledger_path = root / "metadata.json", root / "syllabus.json"
     if not meta_path.exists():
         print(f"❌ {meta_path} 不存在：先按 metadata.md「metadata.json 自愈」重建")
         return 1
     metadata = load_json(meta_path)
+    nums = tuple(int(x) for x in re.findall(r"\d+", str(metadata.get("lathe_version") or ""))[:3])
+    legacy = force_legacy or nums < (0, 6, 0)
+    if force_legacy:
+        print("ℹ️ 已按 --legacy 运行：0.6.0 新增的账本约束降级（检查历史部分时使用）")
     if not ledger_path.exists():
-        print("⚠️ 账本 syllabus.json 不存在：旧教程，按 knowledge-ledger.md「旧教程首次回填」建账")
+        print("⚠️ 账本 syllabus.json 不存在：旧教程，需要首次回填。")
+        print("   由谁建：**下一次 `/lathe 续写 <slug>`** 会按 knowledge-ledger.md「旧教程首次回填」建账，")
+        print("   回填结果作为写前计划确认的一部分交给你过目；本脚本只读不建。")
+        print("   现在只想看覆盖度：`/lathe 列表 <slug>`（会显示「账本：未建立」）。")
         return 3
     raw = ledger_path.read_text(encoding="utf-8")
     try:
@@ -111,8 +138,12 @@ def check(root: Path, receipt: str | None) -> int:
                 errors.append(f"{tag} 已讲但 depth 非法：{pt.get('depth')!r}")
             if target not in parts:
                 errors.append(f"{tag} at 指向不在 parts 里的文件：{target!r}")
-            elif head not in part_heads.get(target, set()):
-                errors.append(f"{tag} at 的章节在 {target} 里找不到：{head!r}")
+            else:
+                how = head_match(head, part_heads.get(target, set()))
+                if how == "none":
+                    errors.append(f"{tag} at 的章节在 {target} 里找不到：{head!r}")
+                elif how != "exact":
+                    drifted.append(f"{tag}（{target}#{head[:28]}）")
         elif pt.get("at"):
             errors.append(f"{tag} 状态 {status} 不应有 at")
         if status == "duplicate" and not pt.get("dup_of"):
@@ -158,6 +189,8 @@ def check(root: Path, receipt: str | None) -> int:
         if "-review" in p or not path.exists():
             continue
         for line in re.findall(r"\*本题涉及的知识点（[^\n]*", path.read_text(encoding="utf-8")):
+            if legacy and "积压 ID" not in line:
+                continue  # 0.6.0 之前写的部分不要求写积压 ID
             m = re.search(r"积压 ID `([^`]+)`", line)
             if not m:
                 errors.append(f"{p}：档 3 提醒没有写积压 ID")
@@ -181,6 +214,12 @@ def check(root: Path, receipt: str | None) -> int:
         qd = sorted(queued)
         print(f"当前积压：{'、'.join(qd) if qd else '无'}")
 
+    if drifted:
+        print(
+            f"ℹ️ {len(drifted)} 条 at 的标题文字与现有小节不一致（已按章号命中，不算断链）："
+            f"{'、'.join(drifted[:6])}" + ("…" if len(drifted) > 6 else "")
+            + "——择机把 at 的标题部分刷新即可，状态与条目都不用动"
+        )
     for w in warnings:
         print(f"⚠️ {w}")
     if errors:
@@ -196,8 +235,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Lathe 知识点账本对账")
     ap.add_argument("tutorial_dir")
     ap.add_argument("--receipt", metavar="PART", help="打印该 part 的「本部分覆盖」行，如 part-03.md")
+    ap.add_argument("--legacy", action="store_true", help="按 0.6.0 之前的规则检查（档 3 积压 ID 一条降级）")
     args = ap.parse_args()
-    return check(Path(args.tutorial_dir), args.receipt)
+    return check(Path(args.tutorial_dir), args.receipt, args.legacy)
 
 
 if __name__ == "__main__":

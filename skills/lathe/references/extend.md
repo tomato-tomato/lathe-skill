@@ -156,9 +156,11 @@
 
 当续写指令中含"收尾/完结/总结"意图时执行本模式——生成总结部分并完结课程，不引入新教学内容。
 
-1. **吸收教程**：同常规步骤 0、1、2（路径解析、按 `continuity` 新鲜度决定读取范围、目标达成评估）。**但收尾要覆盖全课程**，所以：`continuity` 可信时读取 `continuity` + 最后一部分全文，并对其余部分只读一级/二级标题（`grep -n '^#\{1,2\} ' <file>`）以获得逐部分回顾所需的骨架；`continuity` 过期时按路径 B 全文读取。若教程目录存在 `research.md`，读取其中的 `## Open Threads Archive`、`## Changed Interfaces Archive`、**`## Self-study Backlog` 与 `## Covered Concepts Archive`**，用于目标对照、覆盖核对和后续方向。**同时读 `metadata.knowledge_backlog`、`continuity.exercise_carry` 与 `syllabus.json`**——它们是收尾门禁的输入（见步骤 4；门禁先于写总结）。账本缺失时先按 `metadata.md`「旧教程首次回填」建账并请用户确认。跳过本地项目路径询问；收尾不做新的网络研究（除非总结需要核实某个关键事实）。
-2. **确定部分编号**：同常规步骤 5 的规则（含复习部分在内的最大编号 + 1）。
-3. **写入总结部分** `part-NN.md`，内容要求：
+1. **先判门禁，再付读取成本。** 门禁只需要三个小文件：`metadata.json`（`knowledge_backlog`、`continuity.exercise_carry`、`course_plan`、`parts`）+ `syllabus.json` + `research.md` 的归档小节——**不要先读正文**，门禁拒绝时那些读取全部白付（实测：门禁输入约 22 KB，而步骤 2 的正文读取约 137–182 KB）。
+   两条判据：账本中不得还有 `queued` 或 `planned` 条目（除非用户逐条显式降级为 `self-study`）；`course_plan` 的每一项都必须有对应的**常规**部分。任一不满足 → 按 `ledger_check.py <教程目录>` 的结果列出缺口（`queued` 与 `planned` **分组列出**，档 1 已承诺的条目单独点名），并给「① 补写一个 Part ② 逐条降级到自学清单 ③ 强制完结（总结部分按未讲清单如实列出）」三选一；**用户确认前不读正文、不写总结、不得把 `status` 置为 `completed`**。选 ② 的条目账本改 `self-study` 并写进 `research.md` 的 `## Self-study Backlog`；选 ③ 时账本保持原状态（`queued` / `planned` 不改），`knowledge_backlog` 与账本保持一致、不清空。账本缺失时先按 `metadata.md`「旧教程首次回填」建账并请用户确认。
+2. **吸收教程**：同常规步骤 0、1、2（路径解析、按 `continuity` 新鲜度决定读取范围、目标达成评估）。**但收尾要覆盖全课程**，所以：`continuity` 可信时读取 `continuity` + 最后一部分全文，并对其余部分只读一级/二级标题（`grep -n '^#\{1,2\} ' <file>`）以获得逐部分回顾所需的骨架；`continuity` 过期时按路径 B 全文读取。若教程目录存在 `research.md`，读取其中的 `## Open Threads Archive`、`## Changed Interfaces Archive`、**`## Self-study Backlog` 与 `## Covered Concepts Archive`**，用于目标对照、覆盖核对和后续方向。**门禁已在步骤 1 判定完毕**，这一步只管取材所需的正文与归档。跳过本地项目路径询问；收尾不做新的网络研究（除非总结需要核实某个关键事实）。
+3. **确定部分编号**：同常规步骤 5 的规则（含复习部分在内的最大编号 + 1）。
+4. **写入总结部分** `part-NN.md`，内容要求：
    - **全课程回顾**：逐部分一句话总结构建了什么、学到了什么；
    - **知识图谱**：用 Mermaid `flowchart` 或表格整理课程核心概念及其关系；
    - **目标对照**：对应 `goal` 字段逐项说明已建立的能力；未覆盖的部分如实说明；
@@ -168,8 +170,8 @@
    - 末尾说明课程已完结；未来想继续精进时直接续写即可，课程会自动重新开放。
    - 总结部分**不写** `## 检查点`（无可执行新内容），用一段"回顾自检"代替：列出 3-5 个贯穿全课程的关键问题供读者自测。也不写 `## 你将构建什么`。
    - 同样执行 writing-core.md"交付前自检"（结构按收尾变体核对）。
-4. **更新 metadata**：**收尾门禁（0.6.0）在写总结部分之前判定**——账本 `syllabus.json` 中不得还有 `queued` 或 `planned` 条目（除非用户逐条显式降级为 `self-study`）；`course_plan` 的每一项都必须有对应的常规 Part。任一条不满足时，列出缺口（按 ID）并给「① 补写一个 Part ② 逐条降级到自学清单 ③ 强制完结（总结部分按上一节如实列出未讲项）」三选一，**用户确认前不得写总结、不得把 `status` 置为 `completed`**。用户选 ② 的条目账本改 `self-study` 并写进 `research.md` 的 `## Self-study Backlog`；选 ③ 时账本保持原状态（`queued` / `planned` 不改），`knowledge_backlog` 也保持与账本一致、不清空。门禁通过后再：新部分加入 `parts`；`status` 设为 `completed`；更新 `model`、`lathe_version`；`continuity` 照常增量更新（`next_hook` 写明课程已完结、可随时续写重新开放；`open_threads` 移到 `research.md` 的 `## Open Threads Archive` 或标注 resolved，不删除）；`knowledge_backlog` 与账本 `queued` 保持一致（门禁通过的正常情况下为 `[]`）；账本刷新 `updated_at`，**不新增、不删除条目**；`changed_interfaces` 保持现状（收尾不引入新代码变更）；`goal`、`topic_novelty` 等缺失字段补上；`course_plan` 保留为已走路线，不删除。
-5. **告诉用户**课程已完结——总结部分的路径、`status` 已标记 `completed`、**收尾门禁的结果**（积压清零 / 降级 k 条到自学清单 / 经你确认强制完结）；随时可用 `/lathe 续写 <slug>` 重新开放，或用 `/lathe 验证 <slug>` 确认最终可用性。降级过的条目补一句「想学时说『把自学清单里的 X 讲掉』即可重新入队」。
+5. **更新 metadata**（门禁已在步骤 1 判定并通过）：新部分加入 `parts`；`status` 设为 `completed`；更新 `model`、`lathe_version`；`continuity` 照常增量更新（`next_hook` 写明课程已完结、可随时续写重新开放；`open_threads` 移到 `research.md` 的 `## Open Threads Archive` 或标注 resolved，不删除）；`knowledge_backlog` 与账本 `queued` 保持一致（门禁通过的正常情况下为 `[]`）；账本刷新 `updated_at`，**不新增、不删除条目**；`changed_interfaces` 保持现状（收尾不引入新代码变更）；`goal`、`topic_novelty` 等缺失字段补上；`course_plan` 保留为已走路线，不删除。
+6. **告诉用户**课程已完结——总结部分的路径、`status` 已标记 `completed`、**收尾门禁的结果**（积压清零 / 降级 k 条到自学清单 / 经你确认强制完结）；随时可用 `/lathe 续写 <slug>` 重新开放，或用 `/lathe 验证 <slug>` 确认最终可用性。降级过的条目补一句「想学时说『把自学清单里的 X 讲掉』即可重新入队」。
 
 > **面试文档**：收尾部分**不产出面试分段**，也**不写入**面试文档——总结部分不是教学部分（它是全课程回顾 + 知识图谱 + 目标对照，不含新要点，见 `interview.md` 的「教学部分」定义）。即使用户写 `/lathe 续写 收尾 <slug> 面试`，同样不写。
 

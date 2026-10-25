@@ -35,10 +35,11 @@
 ⚠️ 发现教程错误（需要你确认才会处理）
 位置：part-NN.md §<章节>（第 <行> 行附近）
 问题：<一句话说明错在哪>
-依据：<来源链接 / 编译错误 / 与 part-MM 矛盾之处>
+依据：<来源链接（官方一手来源优先）/ 编译错误 / 与 part-MM 的矛盾之处>
 原文：<要改的原文片段，原样摘录>
 修正：<修正后的片段>
-影响：<只改这一处 / 还牵涉 part-MM 的 X>；改正文后该部分需重新验证。
+影响面：<这门课里仍含同一原文的全部位置，逐条列出：part-NN.md §X（第 n 行）、part-NN-review.md、interview.md、syllabus.json 的 at、research.md>
+后果：改正文后该部分需重新验证；<影响面含复习材料/面试文档时说明将做同样的最小替换>。
 
 请回复以下之一（只回复「好」「嗯」不算确认）：
 1. 确认修改 —— 原地修正 part-NN.md，并记入 research.md 的 Errata
@@ -49,13 +50,14 @@
 - **只有用户回复编号 `1` / `2` 或原样写出「确认修改」/「只记勘误」才执行**；其他回复（含「好」「可以」「嗯」）一律当作未确认，可再问一次，不得自行处理。
 - 宿主支持选择框（如 AskUserQuestion）时用选择框呈现这三项，不预选任何一项。
 - 一次回答发现多处错误时，逐条编号列出，允许用户只确认其中几条（如「确认 1、3」）。
+- **影响面必须实测得到**，不得凭记忆估计：有 shell 时 `grep -rn "<原文关键片段>" <教程目录>` 扫全部文件（含 `-review`、`interview.md`、`research.md`、`syllabus.json`）；没有 shell 时逐个文件读过去，并在确认块里写明是人工核对。
 - 已经在学、不想改原文的课程，建议用选项 2（正文冻结，更正写进后续部分）。
 
 **用户确认后的执行：**
 
 | 选项 | 写入 |
 |---|---|
-| 1 确认修改 | ① 只替换确认块里的「原文」片段，不顺手改其他内容、不改 voice 和结构；② 该部分的验证状态横幅换回「未验证」模板（`lathe:verify-status` 标记块，写明「勘误于 <日期>」）；③ `metadata.status` 为 `verified` 时改为 `unverified`（`completed` 保持不变）；④ 若修正涉及 `fixed_numbers` / `covered_concepts` 的措辞，同步更新这些字段；随后刷新 `continuity.updated_at`（这次修改是已知改动，不需要让续写按手工编辑重建）；⑤ 追加一条到 `research.md` 的 `## Errata` |
+| 1 确认修改 | ① 只替换确认块里的「原文」片段，不顺手改其他内容、不改 voice 和结构；② 该部分的验证状态横幅换回「未验证」模板（`lathe:verify-status` 标记块，写明「勘误于 <日期>」）；③ `metadata.status` 为 `verified` 时改为 `unverified`（`completed` 保持不变）；④ 若修正涉及 `fixed_numbers` / `covered_concepts` 的措辞，同步更新这些字段；随后刷新 `continuity.updated_at`（这次修改是已知改动，不需要让续写按手工编辑重建）；⑤ 若修正动到了小节标题：把 `syllabus.json` 中 `at` 指向该章的条目**只改 `at` 的标题部分**（id、状态、其余字段一律不动——`ledger_check.py` 会按章号命中，但指针文字应当跟上）；⑥ 影响面里列出的 `-review` 材料与面试文档，做**同一处摘录的最小替换**（只换这一段，不重写、不调结构、不加新内容）；⑦ 追加一条到 `research.md` 的 `## Errata`（含影响面）；⑧ 复跑自检：`ledger_check.py <教程目录>` 必须 `exit 0`，改动落在代码块内时再跑 `part_lint.py` 与 `trial_run.py`，结果写进回执 |
 | 2 只记勘误 | 只追加一条到 `research.md` 的 `## Errata`，处理方式写「只记勘误」；不动正文、横幅和 `status` |
 | 3 不处理 | 不写任何文件 |
 
@@ -64,14 +66,14 @@
 ```markdown
 ## Errata
 
-- <YYYY-MM-DD> `part-NN` §<章节>：<原文要点> → <修正后>（原因：<一句话>；处理：原地修正 / 只记勘误）
+- <YYYY-MM-DD> `part-NN` §<章节>：<原文要点> → <修正后>（原因：<一句话>；处理：原地修正 / 只记勘误；影响面：<file:行 逗号分隔，含 -review 与账本 at>）
 ```
 
 执行后告诉用户改了哪些文件；选 1 时提示运行 `/lathe 验证 <slug>` 重新验证该部分。
 
 ## 边界
 
-- **默认只读、对话式。** 唯一的写入是上方「勘误确认」中**用户显式确认后**的处理；写入范围仅限：目标 `part-NN.md` 中被确认的那一处片段及其验证状态横幅、`research.md` 的 `## Errata`、`metadata.json` 的 `status` / `continuity.updated_at` / 与修正直接相关的 `continuity` 字段。
-- **不做其他状态修改：** 不验证、不续写、不打标签、不增删知识点、不改 `knowledge_backlog`、`course_plan`、`parts`。
+- **默认只读、对话式。** 唯一的写入是上方「勘误确认」中**用户显式确认后**的处理；写入范围仅限：目标 `part-NN.md` 中被确认的那一处片段及其验证状态横幅、**影响面里同一处摘录**在 `-review` 材料与面试文档中的同样替换、`syllabus.json` 中受影响条目的 `at` 标题部分、`research.md` 的 `## Errata`、`metadata.json` 的 `status` / `continuity.updated_at` / 与修正直接相关的 `continuity` 字段。
+- **不做其他状态修改：** 不验证、不续写、不打标签、不增删知识点、**不改任何条目的 `status`**、不改 `knowledge_backlog`、`course_plan`、`parts`。（更新 `at` 的标题文字不算增删——它是勘误的必要连带修正，缺了它账本指针就断。）
 - **不需要 writing-core.md 或 style-benchmarks.md**——回答问题不是写教程，voice 照教程的 `voice` 字段语气作答即可；勘误也只做最小替换，不需要写作规则。
 - 保持回答针对本教程的具体产物，使用其 voice。

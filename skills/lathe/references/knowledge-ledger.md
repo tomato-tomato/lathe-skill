@@ -11,8 +11,8 @@ description: Lathe 知识点账本与配额来源的单一事实源——syllabu
 
 | 脚本 | 做什么 | 何时跑 |
 |---|---|---|
-| `ledger_check.py <教程目录> [--receipt part-NN.md]` | 账本不变量、ID 镜像、`queued`=积压、`at` 命中章节、档 3 提醒带 ID；`--receipt` 打印「本部分覆盖」行与账本统计 | 生成/续写/收尾写回之后；续写读账本之前（只核 ID 镜像时也可跑） |
-| `part_lint.py <part 文件>` | 结构、契约四行、续写变体、代码块类型、练习上限；打印「实写 N 章」 | 每写完一个 part，落盘之前 |
+| `ledger_check.py <教程目录> [--receipt part-NN.md] [--legacy]` | 账本不变量、ID 镜像、`queued`=积压、`at` 命中章节（带章号时按章号命中）、档 3 提醒带 ID；`--receipt` 打印「本部分覆盖」行与账本统计；`--legacy` 关掉 0.6.0 新增的档 3 检查 | 生成/续写/收尾写回之后；续写读账本之前（只核 ID 镜像时也可跑）；`exit 3` = 还没有账本，由**下一次续写**建账 |
+| `part_lint.py <part 文件> [--kind regular\|finish\|review] [--legacy]` | 结构、契约四行、续写变体、代码块类型、练习上限；打印「实写 N 章」 | 每写完一个 part，落盘之前。**只查本次新写/改动的部分**；检查 0.6.0 之前写的历史部分时加 `--legacy`（那两条 0.6.0 新增约束降级为 `ℹ️`），历史部分的检查结果不作为交付失败 |
 | `trial_run.py <part 文件> --run` | 交付前试跑（见 writing-core.md），打印「试跑：…」行 | 每写完一个 part，落盘之前 |
 
 退出码非 0 就先修再交付；脚本报的问题不得在回执里略过。
@@ -50,7 +50,7 @@ description: Lathe 知识点账本与配额来源的单一事实源——syllabu
 | `tag` | `main` / `foundation` / `mergeable` |
 | `plan_ref` | 对应 `course_plan` 第几项；无归属 `null` |
 | `status` | 六选一，见下表 |
-| `at` | `taught` 必填：`part-NN.md#<该章 ## 标题原文>` |
+| `at` | `taught` 必填：`part-NN.md#<该章 ## 标题原文>`。**带章号的 `at` 由 `ledger_check.py` 按章号命中**——小节标题被勘误改字不算断链，但标题文字要跟着刷新（见 `ask.md` 选项 1 的第 ⑤ 步） |
 | `depth` | `taught` 必填：`full`（构建章六项讲透）/ `foundation`（地基章）/ `ch0`（§0 承接章）/ `tier1`（档 1 融入） |
 | `dup_of` | `duplicate` 必填：主条目 id，或已讲出处 `part-NN.md#<章节标题>` |
 | `note` | `self-study` / `dropped_by_user` 必填（何时、因何）；推断回填写 `inferred` |
@@ -80,7 +80,7 @@ description: Lathe 知识点账本与配额来源的单一事实源——syllabu
 | 操作 | 读 | 写 |
 |---|---|---|
 | 生成 | — | 创建：清单条目 + 全部 plan 项的大纲知识点（`planned`），写完 part-01 后更新状态 |
-| 续写 | **按需**：有 shell 时只取未结条目（`grep -E '"status": "(planned\|queued\|self-study)"'`）+ 本次要动的条目，ID 冲突用 `syllabus_ids` 判断，改写用按行编辑；没有 shell 或只能整文件写回时读全文 | 本部分涉及条目的状态、`at`、`depth`；新增清单 / 练习 / 深化条目；本 plan 项大纲增删（经写前确认）；同步 `syllabus_ids` |
+| 续写 | **按需**：有 shell 时只取未结条目（`grep -E '"status": "(planned\|queued\|self-study)"'`）+ 本次要动的条目，ID 冲突用 `syllabus_ids` 判断，改写用按行编辑；没有 shell 或只能整文件写回时读全文（**写回也必须保持「一条一行」**——实测用 `json.dumps(indent=2)` 重排会把 30 条压成多行结构，直接违反格式不变量、`ledger_check.py` 会报错） | 本部分涉及条目的状态、`at`、`depth`；新增清单 / 练习 / 深化条目；本 plan 项大纲增删（经写前确认）；同步 `syllabus_ids` |
 | 收尾 | 全文 | 门禁里用户选 ② 时改 `self-study`；不新增条目 |
 | 复习 | 全文 | 不写 |
 | 列表（单教程详情） | 只数各状态条数 | 不写 |

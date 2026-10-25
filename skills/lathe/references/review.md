@@ -23,12 +23,13 @@
    - **跳过已有的 `-review` 复习材料**：旧复习材料对新复习无用，只需从 `parts` 数组知道它们占用了哪些编号。
    - **`continuity.part_titles` 已有标题时直接用**，不必为取标题而打开文件（正文仍需读，但不用重复提取）。
 
-2. **确定复习材料编号。** 取 `parts` 数组中所有部分的最大编号 + 1（零填充 2 位），文件名附加 `-review` 后缀：`part-<NN>-review.md`。例如 `parts` 为 `["part-01.md", "part-02.md", "part-03.md"]` 时，复习材料是 `part-04-review.md`；若 `part-04-review.md` 已存在（此前复习过），取下一个编号（`part-05-review.md`）。**检查同名文件是否已存在**，已存在则告诉用户并停止。
+2. **确定复习材料编号。** 术语固定：**常规部分** = `part-NN.md`，**复习部分** = `part-NN-review.md`，两者共用同一条编号轴。新复习部分的编号取 `parts` 里**所有部分（含复习部分）的最大编号 + 1**，零填充 2 位，文件名 `part-<NN>-review.md`。例如 `parts` 为 `["part-01.md", "part-02.md", "part-03.md"]` 时得到 `part-04-review.md`；**同名文件已存在时顺延下一个编号**（此前复习过 → `part-05-review.md`），不停止、不覆盖，并在结果里说明「这是第 k 份复习材料，旧的 `part-MM-review.md` 保留」。
+   编号只用于文件名；复习材料 H1 里的「截至 part-NN」**只取最后的常规部分**，不含复习部分（见下方结构模板）。
 
 3. **写入复习材料** `part-<NN>-review.md`，结构如下：
 
    ```
-   # 复习：<教程标题>（截至 part-<最后常规部分编号>）
+   # 复习：<教程标题>（截至 part-<最后的常规部分编号，忽略 -review>）
 
    [引子——1 到 2 段：点明这份材料的用途：久未接触后快速找回状态]
 
@@ -73,4 +74,4 @@
 
 - 写入 `part-<NN>-review.md` 和更新 `metadata.json` 是唯一的文件写入操作；不编辑已有部分，**不写 `syllabus.json`**（复习只读账本）。
 - 不引入新教学内容，不做网络研究，不修改 `status`、`tags`、`tools`、`sources`。允许写入的 metadata 字段仅限：`parts`、`model`、`lathe_version`、`continuity.part_titles` / `continuity.updated_at`，以及**原本缺失**的 `goal` / `language` / `style_anchor` / `experience_level`（补齐，不覆盖已有值）。
-- 复习材料计入 `parts` 但**不参与验证**（verify 跳过 `-review` 文件）；后续常规续写的编号在所有已有部分（含复习材料）的最大编号上递增。
+- 复习材料计入 `parts` 但**不参与验证**（verify 跳过 `-review` 文件），**也不写验证状态横幅**（它永远不会被验证）；后续常规续写的编号在所有部分（常规 + 复习）的最大编号上递增。
