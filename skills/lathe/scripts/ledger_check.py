@@ -1,390 +1,523 @@
 #!/usr/bin/env python3
-"""知识点账本对账：syllabus.json × metadata.json × part 正文。
-
-用法：
-    python3 <SKILL_DIR>/scripts/ledger_check.py <教程目录>
-    python3 <SKILL_DIR>/scripts/ledger_check.py <教程目录> --receipt part-03.md
-    python3 <SKILL_DIR>/scripts/ledger_check.py <教程目录> --finish        # 收尾门禁缺口分组
-    python3 <SKILL_DIR>/scripts/ledger_check.py <教程目录> --continuity    # 索引预算与归档建议
-
-检查 references/knowledge-ledger.md「账本不变量」的全部机械可查项：
-  字段与状态合规、id 唯一、ID 镜像（metadata.syllabus_ids）、queued = knowledge_backlog、
-  taught 的 at 指向真实章节、planned 不悬空、self-study 同步 research.md、
-  一行一条与可选字段省略、积压条目字段与上限、正文里档 3 提醒带积压 ID 且不过期。
---receipt 额外打印该 part 的「本部分覆盖」行，供覆盖回执直接粘贴。
-
-退出码：0 = 闭合（可能有警告）；1 = 有不一致；2 = 仅 `--finish`：A 类真欠账非空，收尾门禁拒绝放行（等用户选）；3 = 账本不存在（旧教程，需要回填）。
-"""
+"""Lathe 知识点账本对账：兼容新 Markdown 表与 legacy JSON。"""
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lathe_common import headings, load_json, part_number  # noqa: E402
+from lathe_common import (  # noqa: E402
+    KnowledgeTableError,
+    LayoutConflictError,
+    LayoutNotFoundError,
+    POINT_SOURCES,
+    POINT_STATUSES,
+    POINT_TYPES,
+    headings,
+    load_ledger,
+    load_metadata,
+    part_number,
+    point_counts,
+    point_progress,
+    resolve_layout,
+)
 
-STATUSES = ("planned", "queued", "taught", "self-study", "dropped_by_user", "duplicate")
-SRC = ("user", "plan", "exercise", "deepen")
-TAGS = ("main", "foundation", "mergeable")
+STATUSES = POINT_STATUSES
+SRC = POINT_SOURCES
+TAGS = POINT_TYPES
 DEPTH = ("full", "foundation", "ch0", "tier1")
-REQUIRED = ("id", "text", "src", "from", "tag", "plan_ref", "status")
-OPTIONAL = ("original", "parent", "at", "depth", "dup_of", "note", "promised_by")
-BACKLOG_FIELDS = ("id", "text", "from", "plan_ref", "priority")
+LEGACY_REQUIRED = ("id", "text", "src", "from", "tag", "plan_ref", "status")
+LEGACY_OPTIONAL = ("original", "parent", "at", "depth", "dup_of", "note", "promised_by")
 NUM_HEAD = re.compile(r"^(\d+)[.．、]")
+PART_FILE = re.compile(r"part-\d{2}\.md")
+PART_AT = re.compile(r"(part-\d{2}\.md)#(.+)")
 
 
-def head_match(head: str, heads: set[str]) -> str:
-    """at 的章节命中方式：exact / number / prefix / none。
-
-    小节标题里可能带数字、措辞也可能因勘误改动，所以带章号的 `at` 优先按章号命中——
-    标题文字变了不算断链（避免「改标题 → 账本自检失败 → 而勘误不许改账本」的死结）。
-    """
+def head_match(head: str, heads: Set[str]) -> str:
+    """章节命中方式：exact / number / prefix / none。"""
     head = head.strip()
     if head in heads:
         return "exact"
-    m = NUM_HEAD.match(head)
-    if m and any(NUM_HEAD.match(h.strip()) and NUM_HEAD.match(h.strip()).group(1) == m.group(1) for h in heads):
+    match = NUM_HEAD.match(head)
+    if match and any(
+        NUM_HEAD.match(item.strip()) and NUM_HEAD.match(item.strip()).group(1) == match.group(1)
+        for item in heads
+    ):
         return "number"
     if len(head) >= 6:
-        hits = [h for h in heads if h.strip().startswith(head) or head.startswith(h.strip())]
+        hits = [item for item in heads if item.strip().startswith(head) or head.startswith(item.strip())]
         if len(hits) == 1:
             return "prefix"
     return "none"
 
 
+def num_version(value: Any) -> tuple:
+    return tuple(int(item) for item in re.findall(r"\d+", str(value or ""))[:3])
 
-def num_version(value) -> tuple:
-    return tuple(int(x) for x in re.findall(r"\d+", str(value or ""))[:3])
 
-
-def field_size(value) -> int:
-    """索引字段的「字数」：字符串按字符数，数组/对象按各值字符数之和（含分隔符）。"""
+def field_size(value: Any) -> int:
     if isinstance(value, str):
         return len(value)
     if isinstance(value, list):
-        return sum(field_size(x) for x in value) + max(len(value) - 1, 0)
+        return sum(field_size(item) for item in value) + max(len(value) - 1, 0)
     if isinstance(value, dict):
-        return sum(field_size(x) for x in value.values()) + max(len(value) - 1, 0)
+        return sum(field_size(item) for item in value.values()) + max(len(value) - 1, 0)
     return len(str(value))
 
 
-def report_continuity(metadata: dict) -> int:
-    """`--continuity`：索引预算的实测与归档建议。
-
-    旧预算是「1200 软 / 2000 硬」，但各字段只限**每条字数**、不限**条数**，
-    而 `covered_concepts` 又是只增不删的——三门课就实测 1969 字、六门课必然越界，
-    等于写下一条不可能遵守的规则（实测见 temp/verify-0.6.0-readpath）。
-    现在改成：**先给每个字段定条数上限，再让总预算等于它们之和**，
-    于是预算是可达的；超软上限是**归档信号**（不阻塞交付），超硬上限才需要处理，
-    两种情况都不许用压缩正文来解决。
-    """
-    c = metadata.get("continuity") or {}
-    if not c:
-        print("ℹ️ metadata 里没有 continuity 摘要：下次续写会按路径 B 重建，本次无从计算预算")
+def report_continuity(metadata: Dict[str, Any]) -> int:
+    """报告 continuity 缓存预算；知识承接不再依赖 exercise_carry 镜像。"""
+    continuity = metadata.get("continuity") or {}
+    if not continuity:
+        print("ℹ️ metadata 里没有 continuity 摘要：下次续写可重建")
         return 0
     soft, hard = 2200, 3000
-    caps = {  # 字段 -> (条数上限, 每条/每项字数上限)
-        "covered_concepts": (24, 40), "open_threads": (8, 80), "fixed_numbers": (18, 40),
-        "exercise_carry": (9, 40), "part_titles": (8, 60),
+    caps = {
+        "covered_concepts": (24, 40),
+        "open_threads": (8, 80),
+        "fixed_numbers": (18, 40),
+        "part_titles": (8, 60),
     }
-    sizes = {k: field_size(v) for k, v in c.items() if v not in (None, "", [], {})}
+    sizes = {
+        key: field_size(value)
+        for key, value in continuity.items()
+        if key != "exercise_carry" and value not in (None, "", [], {})
+    }
     total = sum(sizes.values())
-    print(f"索引预算：软 {soft} 字 · 硬 {hard} 字 ｜ 实测 {total} 字")
-    for k in sorted(sizes, key=sizes.get, reverse=True):
-        print(f"  {k:<20}{sizes[k]:>5} 字")
+    print("索引预算：软 %d 字 · 硬 %d 字 ｜ 实测 %d 字" % (soft, hard, total))
+    for key in sorted(sizes, key=sizes.get, reverse=True):
+        print("  %-20s%5d 字" % (key, sizes[key]))
 
-    problems, tips = [], []
     counts = {
-        "covered_concepts": len(c.get("covered_concepts") or []),
-        "open_threads": len(c.get("open_threads") or []),
-        "fixed_numbers": len(c.get("fixed_numbers") or {}),
-        "exercise_carry": sum(len(v or []) for v in (c.get("exercise_carry") or {}).values()),
-        "part_titles": len(c.get("part_titles") or {}),
+        "covered_concepts": len(continuity.get("covered_concepts") or []),
+        "open_threads": len(continuity.get("open_threads") or []),
+        "fixed_numbers": len(continuity.get("fixed_numbers") or {}),
+        "part_titles": len(continuity.get("part_titles") or {}),
     }
-    for k, (cap, _) in caps.items():
-        if counts[k] > cap:
-            problems.append(f"{k} {counts[k]} 条 > 上限 {cap} 条")
-            tips.append(f"{k}：把最旧的 {counts[k] - cap} 条按归档顺序移到 research.md 对应小节（概念仍算已讲、伏笔仍算记录，不删）")
+    problems: List[str] = []
+    tips: List[str] = []
+    for key, (cap, _) in caps.items():
+        if counts[key] > cap:
+            problems.append("%s %d 条 > 上限 %d 条" % (key, counts[key], cap))
+            tips.append("%s：归档最旧的 %d 条" % (key, counts[key] - cap))
     for key in ("controlling_example", "next_hook", "metaphor"):
         if sizes.get(key, 0) > 200:
-            problems.append(f"{key} {sizes[key]} 字 > 200 字")
+            problems.append("%s %d 字 > 200 字" % (key, sizes[key]))
     if total > hard:
-        print(f"❌ 超硬上限 {total - hard} 字" + (f"（另有 {len(problems)} 项条数超限）" if problems else ""))
-        for t in (tips or ["各字段条数都在上限内：优先归档 covered_concepts 的旧概念，其次 fixed_numbers"]):
-            print("   - " + t)
-        print("   - **不得压缩正文**：索引超出只归档索引字段")
+        print("❌ 超硬上限 %d 字" % (total - hard))
+        for tip in tips or ["优先归档 covered_concepts，其次 fixed_numbers"]:
+            print("   - " + tip)
         return 1
     if problems:
-        print("⚠️ 字段条数超限（索引还能用，但下次写回要归档）：")
-        for x in problems:
-            print("   - " + x)
+        print("⚠️ 字段条数超限（下次写回归档）：")
+        for problem in problems:
+            print("   - " + problem)
         return 0
     if total > soft:
-        print("⚠️ 超软上限：归档一次索引字段即可（不阻塞交付，也不许压缩正文）")
+        print("⚠️ 超软上限：下次归档一次索引字段即可")
         return 0
     print("✅ 索引在预算内")
     return 0
 
 
-def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: bool = False,
-          continuity: bool = False) -> int:
-    errors: list[str] = []
-    warnings: list[str] = []
-    drifted: list[str] = []
-    meta_path, ledger_path = root / "metadata.json", root / "syllabus.json"
-    if not meta_path.exists():
-        print(f"❌ {meta_path} 不存在：先按 metadata.md「metadata.json 自愈」重建")
+def _point_tag(point: Dict[str, Any], row_line: Optional[int]) -> str:
+    pid = point.get("id")
+    if pid:
+        return str(pid)
+    return "第 %d 行" % row_line if row_line else "空 ID 条目"
+
+
+def _check_at(
+    tag: str,
+    value: Any,
+    parts: List[str],
+    part_heads: Dict[str, Set[str]],
+    errors: List[str],
+    drifted: List[str],
+    label: str = "at",
+) -> None:
+    match = PART_AT.fullmatch(str(value or ""))
+    if not match:
+        errors.append("%s %s 必须写成 part-NN.md#标题" % (tag, label))
+        return
+    target, head = match.groups()
+    if target not in parts:
+        errors.append("%s %s 指向不在 parts 里的文件：%r" % (tag, label, target))
+        return
+    how = head_match(head, part_heads.get(target, set()))
+    if how == "none":
+        errors.append("%s %s 的章节在 %s 里找不到：%r" % (tag, label, target, head))
+    elif how != "exact":
+        drifted.append("%s（%s#%s）" % (tag, target, head[:28]))
+
+
+def _validate_table_cache(ledger: Any, points: List[Dict[str, Any]], errors: List[str]) -> None:
+    table = ledger.table
+    if table is None:
+        return
+    expected_progress = point_progress(points)
+    if table.progress_cache is None:
+        errors.append("知识表缺少进度缓存")
+    elif table.progress_cache != expected_progress:
+        errors.append(
+            "进度缓存不一致：表头 %s，真实 %s"
+            % (table.progress_cache, expected_progress)
+        )
+    expected_counts = point_counts(points)
+    if table.status_cache is None:
+        errors.append("知识表缺少状态缓存")
+    elif table.status_cache != expected_counts:
+        errors.append("状态缓存不一致：请按真实行重建表头统计")
+
+
+def check(
+    root: Path,
+    receipt: Optional[str],
+    force_legacy: bool = False,
+    finish: bool = False,
+    continuity: bool = False,
+) -> int:
+    errors: List[str] = []
+    warnings: List[str] = []
+    drifted: List[str] = []
+    root = root.resolve()
+
+    try:
+        layout = resolve_layout(root)
+    except LayoutConflictError as exc:
+        print("❌ 布局 conflict：%s" % exc)
         return 1
-    metadata = load_json(meta_path)
+    except LayoutNotFoundError as exc:
+        print("❌ %s：先重建 metadata.json" % exc)
+        return 1
+
+    try:
+        metadata = load_metadata(root)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print("❌ metadata.json 无法读取：%s" % exc)
+        return 1
+
     if continuity:
         return report_continuity(metadata)
-    part_versions = metadata.get("part_versions", {}) or {}
-    tutorial_version = num_version(metadata.get("lathe_version"))
-    legacy = force_legacy or tutorial_version < (0, 6, 0)
 
-    def part_legacy(name: str) -> bool:
-        """0.6.0 之后续写过的旧教程，教程级版本已经升到 0.6.0，
-        历史部分只能靠 `metadata.part_versions` 里记录的写入版本判断。"""
-        if force_legacy:
-            return True
-        return num_version(part_versions.get(name) or metadata.get("lathe_version")) < (0, 6, 0)
-    if force_legacy:
-        print("ℹ️ 已按 --legacy 运行：0.6.0 新增的账本约束降级（检查历史部分时使用）")
-    if not ledger_path.exists():
-        print("⚠️ 账本 syllabus.json 不存在：旧教程，需要首次回填。")
-        print("   由谁建：**下一次 `/lathe 续写 <slug>`** 会按 knowledge-ledger.md「旧教程首次回填」建账，")
-        print("   回填结果作为写前计划确认的一部分交给你过目；本脚本只读不建。")
-        print("   现在只想看覆盖度：`/lathe 列表 <slug>`（会显示「账本：未建立」）。")
-        return 3
-    raw = ledger_path.read_text(encoding="utf-8")
-    try:
-        ledger = load_json(ledger_path)
-    except ValueError as exc:
-        print(f"❌ syllabus.json 不是合法 JSON：{exc}——按「账本缺失或损坏」重建")
+    if not layout.ledger_path.is_file():
+        if layout.kind == "legacy":
+            print("⚠️ 账本 syllabus.json 不存在：旧教程，需要首次回填。")
+            return 3
+        print("❌ 新布局缺少 _lathe/knowledge-points.md")
         return 1
 
-    parts = metadata.get("parts", [])
-    points = ledger.get("points", [])
-    plan = metadata.get("course_plan", [])
-    backlog = metadata.get("knowledge_backlog", []) or []
-    part_heads = {p: set(headings((root / p).read_text(encoding="utf-8"))) for p in parts if (root / p).exists()}
-    written = {part_number(p) for p in parts if "-review" not in p}
-    # 教学部分 = 排除复习部分与总结部分（总结部分没有 ## 检查点）。
-    # course_plan 的 `part` 与账本的 `plan_ref` 数的是**第几个教学部分**，不是文件名编号——
-    # 复习材料（part-04-review）与总结部分（part-05）都会占用文件名，
-    # 用编号相等判定会让 plan_ref=4 永远进不了「已覆盖」，④ 保留的 planned 就再也没人查。
-    teaching = [x for x in parts
-                if "-review" not in x and (root / x).is_file()
-                and any(h.startswith("检查点") for h in headings((root / x).read_text(encoding="utf-8")))]
+    try:
+        ledger = load_ledger(layout)
+    except KnowledgeTableError as exc:
+        print("❌ knowledge-points.md 无法解析：")
+        for message in exc.errors:
+            print("   - " + message)
+        return 1
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        name = "knowledge-points.md" if layout.kind == "new" else "syllabus.json"
+        print("❌ %s 无法读取：%s" % (name, exc))
+        return 1
+
+    points = ledger.points
+    raw = ledger.raw
+    parts = metadata.get("parts", []) or []
+    if not isinstance(parts, list):
+        print("❌ metadata.parts 必须是数组")
+        return 1
+    plan = metadata.get("course_plan", []) or []
+    part_versions = metadata.get("part_versions", {}) or {}
+
+    def part_legacy(name: str) -> bool:
+        if force_legacy:
+            return True
+        version = part_versions.get(name) or metadata.get("lathe_version")
+        return num_version(version) < (0, 6, 0)
+
+    if force_legacy:
+        print("ℹ️ 已按 --legacy 运行：0.6.0 新增的正文提醒约束降级")
+
+    part_heads: Dict[str, Set[str]] = {}
+    for part in parts:
+        path = root / part
+        if path.is_file():
+            part_heads[part] = set(headings(path.read_text(encoding="utf-8")))
+    written = {part_number(part) for part in parts if "-review" not in part}
+    teaching = [
+        part
+        for part in parts
+        if "-review" not in part
+        and (root / part).is_file()
+        and any(head.startswith("检查点") for head in headings((root / part).read_text(encoding="utf-8")))
+    ]
     covered_items = set(range(1, len(teaching) + 1))
 
-    if ledger.get("slug") != metadata.get("slug"):
-        errors.append(f"slug 不一致：账本 {ledger.get('slug')!r} ≠ metadata {metadata.get('slug')!r}")
-
-    # 格式：一行一条
-    one_line = [ln for ln in raw.splitlines() if ln.strip().startswith('{"id":')]
-    if len(one_line) != len(points):
-        errors.append(f"书写格式：应一行一个知识点（检测到 {len(one_line)} 行 / {len(points)} 条）")
-
-    ids = [pt.get("id") for pt in points]
-    dups = sorted({i for i in ids if ids.count(i) > 1})
-    if dups:
-        errors.append(f"id 重复：{dups}")
-
-    mirror = metadata.get("syllabus_ids")
-    if mirror is None:
-        warnings.append("metadata.syllabus_ids 缺失：写回时按账本补上（旧教程首次建账属正常）")
+    if layout.kind == "legacy":
+        document = ledger.document or {}
+        if document.get("slug") != metadata.get("slug"):
+            errors.append("slug 不一致：账本 %r ≠ metadata %r" % (document.get("slug"), metadata.get("slug")))
+        # 只检查 points 数组内部的物理行，不要求 `id` 必须是对象的第一个键。
+        # legacy 写回必须保留未知字段与原键序；用 `startswith('{\"id\"')` 会误报合法 round-trip。
+        block = re.search(r'"points"\s*:\s*\[\s*\n(?P<body>.*?)\n\s*\]', raw, flags=re.DOTALL)
+        one_line = []
+        if block:
+            for line in block.group("body").splitlines():
+                candidate = line.strip().rstrip(",")
+                if not candidate:
+                    continue
+                try:
+                    value = json.loads(candidate)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(value, dict):
+                    one_line.append(value)
+        if len(one_line) != len(points):
+            errors.append("书写格式：应一行一个知识点（检测到 %d 行 / %d 条）" % (len(one_line), len(points)))
     else:
-        vanished = sorted(set(mirror) - set(ids))
-        unregistered = sorted(set(ids) - set(mirror))
-        if vanished:
-            errors.append(f"账本条目凭空消失：{vanished}（syllabus_ids 里有、账本里没有）——停止写入，按「账本缺失或损坏」恢复")
-        if unregistered:
-            errors.append(f"新增条目没登记进 metadata.syllabus_ids：{unregistered}")
-        if mirror != sorted(mirror):
-            warnings.append("syllabus_ids 未按字母序排列")
+        _validate_table_cache(ledger, points, errors)
 
-    for pt in points:
-        pid = pt.get("id")
-        tag = f"{pid}"
-        missing = [f for f in REQUIRED if f not in pt]
-        if missing:
-            errors.append(f"{tag} 缺必填字段 {missing}")
-            continue
-        status = pt["status"]
+    ids = [point.get("id") for point in points]
+    nonempty_ids = [str(pid) for pid in ids if pid not in (None, "")]
+    duplicates = sorted({pid for pid in nonempty_ids if nonempty_ids.count(pid) > 1})
+    if duplicates:
+        errors.append("id 重复：%s" % duplicates)
+
+    row_lines = ledger.table.row_lines if ledger.table else [None] * len(points)
+    for point, row_line in zip(points, row_lines):
+        tag = _point_tag(point, row_line)
+        pid = point.get("id")
+        if pid in (None, ""):
+            errors.append("%s ID 为空：请在写作前补成全课程唯一 ID" % tag)
+        if layout.kind == "legacy":
+            missing = [field for field in LEGACY_REQUIRED if field not in point]
+            if missing:
+                errors.append("%s 缺必填字段 %s" % (tag, missing))
+                continue
+        else:
+            missing = [field for field in ("id", "text", "src", "tag", "plan_ref", "status") if field not in point]
+            if missing:
+                errors.append("%s 缺字段 %s" % (tag, missing))
+                continue
+
+        status = point.get("status")
         if status not in STATUSES:
-            errors.append(f"{tag} 非法 status {status!r}")
-        if pt["src"] not in SRC:
-            errors.append(f"{tag} 非法 src {pt['src']!r}")
-        if pt["tag"] not in TAGS:
-            errors.append(f"{tag} 非法 tag {pt['tag']!r}")
-        if len(str(pt["text"])) > 60:
-            errors.append(f"{tag} text 超过 60 字")
-        for opt in OPTIONAL:
-            if opt in pt and pt[opt] in (None, "", []):
-                warnings.append(f"{tag} 可选字段 {opt} 为空，应整个省略")
-        if pt["src"] == "user" and not pt.get("original"):
-            errors.append(f"{tag} 用户条目没有逐字保留 original")
+            errors.append("%s 非法状态 %r" % (tag, status))
+        if point.get("src") not in SRC:
+            errors.append("%s 非法来源 %r" % (tag, point.get("src")))
+        if point.get("tag") not in TAGS:
+            errors.append("%s 非法类型 %r" % (tag, point.get("tag")))
+        if not str(point.get("text") or "").strip():
+            errors.append("%s 知识点为空" % tag)
+        elif len(str(point.get("text"))) > 60:
+            errors.append("%s 知识点超过 60 字" % tag)
+
+        if layout.kind == "legacy":
+            for field in LEGACY_OPTIONAL:
+                if field in point and point[field] in (None, "", []):
+                    warnings.append("%s 可选字段 %s 为空，应整个省略" % (tag, field))
+            if point.get("src") == "user" and not point.get("original"):
+                errors.append("%s 用户条目没有逐字保留 original" % tag)
+        elif point.get("src") == "user" and "用户原文：" not in str(point.get("note") or ""):
+            errors.append("%s 用户条目的备注必须逐字保留「用户原文：…」" % tag)
+
+        at = point.get("at")
+        promised = point.get("promised_by")
+        dup_of = point.get("dup_of")
         if status == "taught":
-            target, _, head = (pt.get("at") or "").partition("#")
-            if pt.get("depth") not in DEPTH:
-                errors.append(f"{tag} 已讲但 depth 非法：{pt.get('depth')!r}")
-            if target not in parts:
-                errors.append(f"{tag} at 指向不在 parts 里的文件：{target!r}")
+            if not at:
+                errors.append("%s taught 缺少 at:part-NN.md#标题" % tag)
             else:
-                how = head_match(head, part_heads.get(target, set()))
-                if how == "none":
-                    errors.append(f"{tag} at 的章节在 {target} 里找不到：{head!r}")
-                elif how != "exact":
-                    drifted.append(f"{tag}（{target}#{head[:28]}）")
-        elif pt.get("at"):
-            errors.append(f"{tag} 状态 {status} 不应有 at")
-        promised = pt.get("promised_by")
-        if promised and not re.fullmatch(r"part-\d{2}\.md", str(promised)):
-            errors.append(f"{tag} promised_by 要写成 part-NN.md：{promised!r}")
-        if status == "planned" and promised:
-            ref = pt.get("plan_ref")
-            ref_is_covered = isinstance(ref, int) and ref in covered_items
-            if status == "planned" and promised and (ref_is_covered or metadata.get("status") == "completed"):
-                errors.append(
-                    f"{tag} 已承诺未兑现且课程已完结：{promised} 答应在 Part {ref} 讲，"
-                    f"但 `status = completed`——完结后这条承诺永远不会兑现（收尾门禁应拦住，或按 ④ 时须先清掉 A 类）"
-                )
-            elif ref_is_covered:
-                errors.append(
-                    f"{tag} 已承诺未兑现：{promised} 的练习承接说好在 Part {ref} 讲，"
-                    f"该部分已写完但状态仍是 planned——改 taught，或退回 queued 并在正文留提醒"
-                )
-        if status == "duplicate" and not pt.get("dup_of"):
-            errors.append(f"{tag} duplicate 没写 dup_of")
-        if status in ("self-study", "dropped_by_user") and not pt.get("note"):
-            errors.append(f"{tag} {status} 没写 note（何时、因何——只能来自用户显式选择）")
-        if status == "self-study":
-            research = root / "research.md"
-            if not research.exists() or pid not in research.read_text(encoding="utf-8"):
-                errors.append(f"{tag} self-study 没同步到 research.md 的 ## Self-study Backlog")
+                _check_at(tag, at, parts, part_heads, errors, drifted)
+            if layout.kind == "legacy" and point.get("depth") not in DEPTH:
+                errors.append("%s 已讲但 depth 非法：%r" % (tag, point.get("depth")))
+        elif at:
+            errors.append("%s 状态 %s 不应使用 at:" % (tag, status))
+
+        if promised:
+            if not PART_FILE.fullmatch(str(promised)):
+                errors.append("%s promise 必须写成 part-NN.md" % tag)
+            elif str(promised) not in parts:
+                errors.append("%s promise 指向不在 parts 里的文件：%s" % (tag, promised))
+            if layout.kind == "new" and status not in ("planned", "queued"):
+                errors.append("%s 只有 planned/queued 可使用 promise:" % tag)
+
+        if status == "duplicate":
+            if not dup_of:
+                errors.append("%s duplicate 缺少 dup:<ID或part引用>" % tag)
+            else:
+                dup_text = str(dup_of)
+                if PART_AT.fullmatch(dup_text):
+                    _check_at(tag, dup_text, parts, part_heads, errors, drifted, "dup")
+                elif dup_text not in nonempty_ids:
+                    errors.append("%s dup 引用的 ID 不存在：%s" % (tag, dup_text))
+                elif dup_text == str(pid):
+                    errors.append("%s dup 不能引用自身" % tag)
+        elif dup_of and layout.kind == "new":
+            errors.append("%s 只有 duplicate 可使用 dup:" % tag)
+
+        if status in ("self-study", "dropped_by_user") and not str(point.get("note") or "").strip():
+            errors.append("%s %s 缺少备注原因" % (tag, status))
+
         if status == "planned":
-            ref = pt["plan_ref"]
+            ref = point.get("plan_ref")
             if ref is None:
-                if not pt.get("note"):
-                    errors.append(f"{tag} planned 但没有 plan_ref，也没有 note 说明归属")
+                if layout.kind == "new" or not point.get("note"):
+                    errors.append("%s planned 缺少计划 Part" % tag)
+            elif not isinstance(ref, int) or ref <= 0:
+                errors.append("%s planned 的计划 Part 必须是正整数" % tag)
             else:
-                item = next((i for i in plan if i.get("part") == ref), None)
-                if item is None and isinstance(ref, int) and 0 < ref <= len(plan):
+                item = next((entry for entry in plan if entry.get("part") == ref), None)
+                if item is None and 0 < ref <= len(plan):
                     item = plan[ref - 1]
                 if item is None:
-                    errors.append(f"{tag} planned 的 plan_ref {ref} 在 course_plan 里不存在")
-                elif item.get("part") in covered_items:
-                    if not promised:  # 已承诺未兑现另有专门一条，别重复报
-                        errors.append(f"{tag} 仍是 planned，但它是第 {item.get('part')} 个教学部分的内容而该部分已写完——悬空条目")
+                    errors.append("%s planned 的计划 Part %s 在 course_plan 里不存在" % (tag, ref))
+                elif item.get("part") in covered_items and not promised:
+                    errors.append("%s 仍是 planned，但对应教学部分已写完" % tag)
 
-    queued = {pt.get("id") for pt in points if pt.get("status") == "queued"}
-    backlog_ids = {b.get("id") for b in backlog}
-    if queued != backlog_ids:
-        errors.append(
-            f"账本 queued ≠ knowledge_backlog（只在账本：{sorted(queued - backlog_ids)}；只在积压：{sorted(backlog_ids - queued)}）"
-        )
-    for b in backlog:
-        miss = [f for f in BACKLOG_FIELDS if f not in b]
-        if miss:
-            errors.append(f"积压 {b.get('id')} 缺字段 {miss}")
-        if b.get("priority") not in (None, "core"):
-            errors.append(f"积压 {b.get('id')} 的 priority 只能是 core（自学条目只放 research.md）")
-    if len(backlog) > 14:
-        warnings.append(f"积压 {len(backlog)} 条 > 14：只有闸门选 ① 扩 Part 后才允许（每多 1 个 Part +7）")
+        if status == "planned" and promised:
+            ref = point.get("plan_ref")
+            if (isinstance(ref, int) and ref in covered_items) or metadata.get("status") == "completed":
+                errors.append("%s 已承诺未兑现：%s，计划 Part %s 已结束" % (tag, promised, ref))
 
-    taught = {pt.get("id") for pt in points if pt.get("status") == "taught"}
-    for p in parts:
-        path = root / p
-        if "-review" in p or not path.exists():
+    # duplicate 必须直接指向一个真实主条目，不能形成 duplicate 链或环。
+    by_id = {str(point.get("id")): point for point in points if point.get("id")}
+    for point in points:
+        if point.get("status") != "duplicate":
             continue
-        part_is_legacy = part_legacy(p)
-        for line in re.findall(r"\*本题涉及的知识点（[^\n]*", path.read_text(encoding="utf-8")):
-            if part_is_legacy and "积压 ID" not in line:
-                continue  # 0.6.0 之前写的部分不要求写积压 ID
-            m = re.search(r"积压 ID `([^`]+)`", line)
-            if not m:
-                errors.append(f"{p}：档 3 提醒没有写积压 ID")
-            elif m.group(1) not in ids:
-                errors.append(f"{p}：档 3 提醒引用的 {m.group(1)} 不在账本里")
-            elif m.group(1) not in queued | taught:
-                warnings.append(f"{p}：档 3 提醒引用的 {m.group(1)} 状态已是 {next(x['status'] for x in points if x['id'] == m.group(1))}")
+        target_id = str(point.get("dup_of") or "")
+        if PART_AT.fullmatch(target_id):
+            continue
+        target = by_id.get(target_id)
+        if target and target.get("status") not in ("taught", "planned", "queued"):
+            errors.append(
+                "%s dup 必须直接指向 taught/planned/queued 主条目，不能指向 %s"
+                % (_point_tag(point, None), target.get("status"))
+            )
 
-    counts = {s: sum(1 for pt in points if pt.get("status") == s) for s in STATUSES}
-    summary = " · ".join(f"{s} {n}" for s, n in counts.items() if n)
-    print(f"账本：{summary}（共 {len(points)} 条）")
+    queued = {point.get("id") for point in points if point.get("status") == "queued" and point.get("id")}
+    taught = {point.get("id") for point in points if point.get("status") == "taught" and point.get("id")}
+    if len(queued) > 14:
+        warnings.append("queued %d 条 > 14：已超过默认积压闸门" % len(queued))
+
+    for part in parts:
+        path = root / part
+        if "-review" in part or not path.exists():
+            continue
+        for line in re.findall(r"\*本题涉及的知识点（[^\n]*", path.read_text(encoding="utf-8")):
+            if part_legacy(part) and "积压 ID" not in line:
+                continue
+            match = re.search(r"积压 ID `([^`]+)`", line)
+            if not match:
+                errors.append("%s：档 3 提醒没有写积压 ID" % part)
+            elif match.group(1) not in nonempty_ids:
+                errors.append("%s：档 3 提醒引用的 %s 不在知识表里" % (part, match.group(1)))
+            elif match.group(1) not in queued | taught:
+                state = next(point.get("status") for point in points if point.get("id") == match.group(1))
+                warnings.append("%s：档 3 提醒引用的 %s 状态已是 %s" % (part, match.group(1), state))
+
+    counts = point_counts(points)
+    summary = " · ".join("%s %d" % (status, count) for status, count in counts.items() if count)
+    print("账本：%s（共 %d 条）" % (summary or "无条目", len(points)))
 
     if finish:
-        debt = [pt["id"] for pt in points if pt.get("status") == "queued"]
-        broken_promise = [pt["id"] for pt in points
-                          if pt.get("status") == "planned" and pt.get("promised_by")
-                          and (pt.get("plan_ref") in covered_items
-                               or metadata.get("status") == "completed")]
-        roadmap = {}
-        for pt in points:
-            if pt.get("status") == "planned" and pt["id"] not in broken_promise:
-                roadmap.setdefault(pt.get("plan_ref"), []).append(pt["id"])
-        dangling_plan = [i.get("part") for i in plan if i.get("part") not in written]
+        debt = [point.get("id") for point in points if point.get("status") == "queued"]
+        broken = [
+            point.get("id")
+            for point in points
+            if point.get("status") == "planned"
+            and point.get("promised_by")
+            and (point.get("plan_ref") in covered_items or metadata.get("status") == "completed")
+        ]
+        roadmap: Dict[Any, List[Any]] = {}
+        for point in points:
+            if point.get("status") == "planned" and point.get("id") not in broken:
+                roadmap.setdefault(point.get("plan_ref"), []).append(point.get("id"))
+        dangling_plan = [item.get("part") for item in plan if item.get("part") not in written]
         print("收尾门禁分组：")
-        print(f"  A 类真欠账：queued {len(debt)} {debt or '—'} ｜ 已承诺未兑现 {len(broken_promise)} {broken_promise or '—'}")
-        for ref in sorted(roadmap, key=lambda x: (x is None, x)):
-            tag = "无 plan_ref" if ref is None else f"Part {ref}"
-            print(f"  B 类未开工路线项（{tag}）：{'、'.join(roadmap[ref])}")
-        print(f"  course_plan 还没有常规部分的项：{sorted(dangling_plan) or '无'}")
-        if debt or broken_promise:
-            print("  → A 类非空：只能 ① 补写 Part / ② 逐条降级 / ③ 强制完结"
-                  "（必须由用户选；本脚本以 exit 2 表示「门禁拒绝放行」）")
+        print("  A 类真欠账：queued %d %s ｜ 已承诺未兑现 %d %s" % (len(debt), debt or "—", len(broken), broken or "—"))
+        for ref in sorted(roadmap, key=lambda value: (value is None, str(value))):
+            label = "无计划 Part" if ref is None else "Part %s" % ref
+            print("  B 类未开工路线项（%s）：%s" % (label, "、".join(str(item) for item in roadmap[ref])))
+        print("  course_plan 还没有常规部分的项：%s" % (sorted(dangling_plan) or "无"))
+        if debt or broken:
+            print("  → A 类非空：收尾门禁拒绝放行")
         elif roadmap or dangling_plan:
-            print("  → 只有 B 类：默认 ④ 按现状完结（保留 planned、不改状态，总结的未讲清单如实列出）")
+            print("  → 只有 B 类：可按现状完结并保留 planned")
         else:
             print("  → 无缺口：门禁通过")
-        for w in warnings:
-            print(f"⚠️ {w}")
-        for e in errors:
-            print(f"❌ {e}")
+        for warning in warnings:
+            print("⚠️ " + warning)
+        for error in errors:
+            print("❌ " + error)
         if errors:
             return 1
-        return 2 if (debt or broken_promise) else 0
+        return 2 if debt or broken else 0
 
     if receipt:
-        mine = [pt for pt in points if pt.get("status") == "taught" and (pt.get("at") or "").startswith(receipt + "#")]
+        mine = [
+            point
+            for point in points
+            if point.get("status") == "taught" and str(point.get("at") or "").startswith(receipt + "#")
+        ]
         heads = headings((root / receipt).read_text(encoding="utf-8")) if (root / receipt).exists() else []
-        def sec(h: str) -> str:
-            m = re.match(r"(\d+)\.", h)
-            return f"§{m.group(1)}" if m else f"§{heads.index(h) + 1}" if h in heads else h
-        cover = " · ".join(f"{pt['id']}→{sec(pt['at'].split('#', 1)[1])} ✅" for pt in mine)
-        print(f"本部分覆盖：{cover or '（无 taught 条目指向该 part）'}")
-        qd = sorted(queued)
-        print(f"当前积压：{'、'.join(qd) if qd else '无'}")
+        build_points = [
+            point
+            for point in mine
+            if point.get("tag") in ("main", "mergeable")
+            and point.get("depth") not in ("foundation", "ch0")
+        ]
+        foundation_points = [
+            point for point in mine if point.get("tag") == "foundation" or point.get("depth") == "foundation"
+        ]
+        carry_points = [
+            point for point in mine if point.get("tag") == "carry" or point.get("depth") == "ch0"
+        ]
+        written_version = num_version(part_versions.get(receipt) or metadata.get("lathe_version"))
+        if written_version >= (0, 6, 1) and not 4 <= len(build_points) <= 7:
+            errors.append(
+                "%s 构建知识点 %d 个，不在 4–7 配额内（地基 %d、承接 %d 不占构建名额）"
+                % (receipt, len(build_points), len(foundation_points), len(carry_points))
+            )
+
+        def section_name(head: str) -> str:
+            match = re.match(r"(\d+)\.", head)
+            if match:
+                return "§" + match.group(1)
+            return "§%d" % (heads.index(head) + 1) if head in heads else head
+
+        cover = " · ".join(
+            "%s→%s ✅" % (point.get("id"), section_name(str(point.get("at")).split("#", 1)[1]))
+            for point in mine
+        )
+        print("本部分覆盖：%s" % (cover or "（无 taught 条目指向该 part）"))
+        print("当前积压：%s" % ("、".join(sorted(str(item) for item in queued)) if queued else "无"))
 
     if drifted:
-        print(
-            f"ℹ️ {len(drifted)} 条 at 的标题文字与现有小节不一致（已按章号命中，不算断链）："
-            f"{'、'.join(drifted[:6])}" + ("…" if len(drifted) > 6 else "")
-            + "——择机把 at 的标题部分刷新即可，状态与条目都不用动"
-        )
-    for w in warnings:
-        print(f"⚠️ {w}")
+        print("ℹ️ %d 条章节文字已按章号命中：%s" % (len(drifted), "、".join(drifted[:6])))
+    for warning in warnings:
+        print("⚠️ " + warning)
     if errors:
-        print(f"❌ 发现 {len(errors)} 处不一致：")
-        for e in errors:
-            print(f"   - {e}")
+        print("❌ 发现 %d 处不一致：" % len(errors))
+        for error in errors:
+            print("   - " + error)
         return 1
     print("✅ 账本闭合")
     return 0
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Lathe 知识点账本对账")
-    ap.add_argument("tutorial_dir")
-    ap.add_argument("--receipt", metavar="PART", help="打印该 part 的「本部分覆盖」行，如 part-03.md")
-    ap.add_argument("--legacy", action="store_true", help="按 0.6.0 之前的规则检查（档 3 积压 ID 一条降级）")
-    ap.add_argument("--finish", action="store_true", help="按收尾门禁口径分组打印缺口（A 类真欠账 / B 类未开工路线项）")
-    ap.add_argument("--continuity", action="store_true", help="只报索引预算（按常规部分数伸缩）与归档建议")
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser(description="Lathe 知识点账本对账")
+    parser.add_argument("tutorial_dir")
+    parser.add_argument("--receipt", metavar="PART", help="打印该 part 的覆盖回执")
+    parser.add_argument("--legacy", action="store_true", help="按 0.6.0 之前规则检查历史正文")
+    parser.add_argument("--finish", action="store_true", help="打印收尾门禁分组")
+    parser.add_argument("--continuity", action="store_true", help="只报 continuity 索引预算")
+    args = parser.parse_args()
     return check(Path(args.tutorial_dir), args.receipt, args.legacy, args.finish, args.continuity)
 
 

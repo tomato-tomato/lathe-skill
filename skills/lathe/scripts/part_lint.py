@@ -29,13 +29,22 @@
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lathe_common import code_blocks, headings, part_number, section, strip_code  # noqa: E402
+from lathe_common import (  # noqa: E402
+    LayoutConflictError,
+    LayoutNotFoundError,
+    code_blocks,
+    headings,
+    load_metadata,
+    part_number,
+    resolve_layout,
+    section,
+    strip_code,
+)
 
 REGULAR_SECTIONS = ("你将构建什么", "前置条件", "检查点", "接下来", "练习", "来源")
 REVIEW_SECTIONS = ("逐部分回顾", "自测", "重跑检查点", "学习目标回顾", "还没讲到的", "还可以继续深入的方向")
@@ -46,16 +55,13 @@ ELLIPSIS = re.compile(r"^\s*(?://|#|--)?\s*(?:\.\.\.|…)\s*$", re.MULTILINE)
 
 
 def write_version(path: Path) -> str:
-    """这个部分当初是用哪个技能版本写的。
+    """通过双布局适配层读取这个部分当初使用的技能版本。
 
     优先取 `metadata.part_versions[<文件名>]`（逐部分记录），缺失时回落到教程级
     `lathe_version`。旧教程被新版本续写一次后 `lathe_version` 会升级，
     只有逐部分记录才能区分「本次新写的部分」和「历史部分」。"""
-    meta = path.parent / "metadata.json"
-    if not meta.is_file():
-        return ""
     try:
-        data = json.loads(meta.read_text(encoding="utf-8"))
+        data = load_metadata(path.parent)
     except Exception:
         return ""
     return str((data.get("part_versions") or {}).get(path.name) or data.get("lathe_version") or "")
@@ -67,6 +73,13 @@ def tutorial_legacy(path: Path) -> bool:
 
 
 def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
+    try:
+        resolve_layout(path.parent)
+    except LayoutConflictError as exc:
+        print(f"❌ 布局 conflict：{exc}")
+        return 1
+    except LayoutNotFoundError:
+        pass  # 保持旧行为：没有 metadata 时按未知版本继续做结构检查。
     legacy = force_legacy or tutorial_legacy(path)
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
@@ -215,8 +228,11 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
         pre = next((i for i, h in enumerate(heads) if h.startswith("前置条件")), -1)
         chk = next((i for i, h in enumerate(heads) if h.startswith("检查点")), len(heads))
         chapters = heads[pre + 1:chk]
-        build = [h for h in chapters if not re.match(r"0[\.．、]", h)]
-        print(f"章节：地基/承接 {len(chapters) - len(build)} · 构建 {len(build)}（实写 {len(chapters)} 章）")
+        if len(chapters) > 9:
+            errors.append(f"地基 + 承接 + 构建共 {len(chapters)} 章（上限 9）")
+        # 这里只报告章节结构；4–7 构建知识点由 ledger_check --receipt 按知识表类型精确门禁。
+        carry = [h for h in chapters if re.match(r"0[\.．、]", h)]
+        print(f"章节：§0 承接 {len(carry)} · 其他教学章 {len(chapters) - len(carry)}（实写 {len(chapters)} 章）")
     runnable = sum(1 for t in types if t in ("runnable", "expected_failure"))
     print(f"代码块：{len(blocks)} 个，其中可执行 {runnable} 个")
 
