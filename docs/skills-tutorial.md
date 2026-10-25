@@ -1254,6 +1254,7 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 
 ```bash
 python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-03.md          # 结构、契约四行、代码块类型、练习上限、实写章数
+python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-04-review.md --kind review  # 复习材料专用：六节齐全、覆盖全部常规部分、不查验证横幅
 python3 <技能目录>/scripts/trial_run.py    <教程目录>/part-03.md --run    # 在临时目录逐块编译/运行 runnable 与 expected_failure
 python3 <技能目录>/scripts/ledger_check.py <教程目录> --receipt part-03.md  # 账本对账 + 打印「本部分覆盖」回执行
 

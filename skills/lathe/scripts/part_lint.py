@@ -10,6 +10,8 @@
   代码块类型（未标记、runnable 含整行 ...、fragment 无最终 runnable/检查点、exercise 无答案）、
   必做练习引入新概念 ≤2（按档 3 提醒计）、选做练习附文档链接、ASIDE ≤2、PREDICT ≥1、
   来源条数、正文长度与单块行数的软阈值。
+  `--kind review`（或文件名含 `-review` 自动判定）改查复习材料的六个必备小节、顺序、
+  是否覆盖全部常规部分、H1 格式与教学标注；不查验证横幅与教程结构。
 最后一行打印构建章节数，供覆盖回执的「实写 N 章」使用。
 
 **只检查本次新写/改动的部分。** 教程 `metadata.json` 的 `lathe_version` 低于 0.6.0 时，
@@ -31,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lathe_common import code_blocks, headings, part_number, section, strip_code  # noqa: E402
 
 REGULAR_SECTIONS = ("你将构建什么", "前置条件", "检查点", "接下来", "练习", "来源")
+REVIEW_SECTIONS = ("逐部分回顾", "自测", "重跑检查点", "学习目标回顾", "还没讲到的", "还可以继续深入的方向")
 CONTRACT_LINES = ("本部分结束时的文件状态", "下一部分起始状态", "本部分不覆盖", "练习承接")
 ELLIPSIS = re.compile(r"^\s*(?://|#|--)?\s*(?:\.\.\.|…)\s*$", re.MULTILINE)
 
@@ -66,7 +69,7 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
 
     if not text.lstrip().startswith("# "):
         errors.append("第一行必须是一级标题 `# `")
-    if "lathe:verify-status:start" not in text:
+    if kind != "review" and "lathe:verify-status:start" not in text:
         warnings.append("缺少验证状态横幅（新写的 part 必须在 H1 后插入未验证横幅）")
 
     if kind == "regular":
@@ -95,6 +98,29 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
             errors.append("§0 承接/地基章必须紧跟 ## 前置条件，放在第一个构建章之前")
         if text.count("[!PREDICT]") == 0:
             warnings.append("检查点前没有 > [!PREDICT]")
+
+    if kind == "review":
+        missing = [x for x in REVIEW_SECTIONS if not any(x in h for h in heads)]
+        if missing:
+            errors.append(f"复习材料缺少小节：{missing}")
+        seq = [h for h in heads if any(x in h for x in REVIEW_SECTIONS)]
+        rank = [min(REVIEW_SECTIONS.index(x) for x in REVIEW_SECTIONS if x in h) for h in seq]
+        if rank != sorted(rank):
+            errors.append("复习材料小节顺序不对：" + " → ".join(seq))
+        first = text.lstrip().splitlines()[0] if text.strip() else ""
+        if not first.startswith("# 复习："):
+            warnings.append("复习材料的 H1 应为「# 复习：<教程标题>（截至 part-NN）」")
+        if re.search(r"part-\d+-review", first):
+            errors.append("H1 的「截至 part-NN」只能取最后的常规部分，不能取复习部分")
+        regs = sorted(f.name for f in path.parent.glob("part-*.md") if "-review" not in f.name)
+        want = {m.group(1).lstrip("0") or "0" for n in regs for m in [re.search(r"part-(\d+)\.md", n)] if m}
+        covered = {c.lstrip("0") or "0" for c in re.findall(r"^###\s*part-(\d+)", text, flags=re.MULTILINE)}
+        if want and not want <= covered:
+            errors.append(f"「逐部分回顾」没有覆盖全部常规部分：缺第 {sorted(want - covered, key=int)} 部分")
+        if text.count("[!PREDICT]") or text.count("[!ASIDE]"):
+            warnings.append("复习材料不用教学标注（PREDICT / ASIDE）")
+        if text.count("[!RECALL]") > 1:
+            warnings.append("复习材料的 [!RECALL] 最多 1 个")
 
     blocks = code_blocks(text)
     types = [b["type"] for b in blocks]

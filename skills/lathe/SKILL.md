@@ -170,7 +170,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 **知识点账本 `syllabus.json`**（与 `metadata.json` 并列）：课程承诺讲的每个知识点一条记录，六种状态 `planned` / `queued` / `taught` / `self-study` / `dropped_by_user` / `duplicate`，**状态改变时改字段、永不删除条目**；`knowledge_backlog` 是其中 `queued` 条目的投影，`metadata.syllabus_ids` 是它的 ID 镜像（用来发现被整条删掉的条目）。生成时创建，续写/收尾维护，复习与列表只读。规范见 [references/knowledge-ledger.md](references/knowledge-ledger.md)。
 
-**检查脚本（`scripts/`，纯标准库 Python 3）**：`ledger_check.py`（账本对账）、`part_lint.py`（单个 part 结构检查）、`trial_run.py`（交付前试跑）。写作型操作有 shell 时必须跑，回执里的数字粘贴脚本输出；没有 shell 时按 `knowledge-ledger.md`「人工核对清单」核对。
+**检查脚本（`scripts/`，纯标准库 Python 3）**：`ledger_check.py`（账本对账）、`part_lint.py`（单个 part 结构检查，`--kind review` 查复习材料）、`trial_run.py`（交付前试跑）。写作型操作有 shell 时必须跑，**但只跑本次新写/改动的部分**（检查 0.6.0 之前的历史部分时加 `--legacy`），回执里的数字粘贴脚本输出；复习只跑 `part_lint.py --kind review`，不跑账本与试跑脚本；没有 shell 时按 `knowledge-ledger.md`「人工核对清单」核对。
 
 **任何字段缺失都必须可降级运行**——按 metadata.md 的规则推断，并在本次写回时补上，绝不因缺字段中止操作。
 
