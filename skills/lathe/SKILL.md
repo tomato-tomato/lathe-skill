@@ -129,6 +129,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 - **生成新教程：** 每次生成前都询问本课程保存位置（默认提议 `tutorials_base_path`）；保存后将该教程登记到 `tutorial_paths`。
 - **操作已有教程（带 slug）：** 先查 `tutorial_paths[<slug>]`；未登记则回退到 `tutorials_base_path`；该位置也找不到此 slug 时，列出 config 中已知的所有 slug 及其位置供用户选择，**并提示 `/lathe 扫描` 可以把磁盘上未登记的教程找回来**（教程被手工拷贝、克隆或移动进来时就属于这种情况）。
+- **参数给的是目录而不是 slug**（绝对路径，或 `~/tmp/tutorials/foo-rs` 这种带 `/` 的路径）：目录存在且含 `metadata.json`（或 `part-*.md`）时，**本次直接在这个目录上操作**，取末级目录名当 slug；**不写 `~/.lathe/config.json`**——临时目录、测试沙箱、别人拷来的教程都属于这种场景，登记只会污染配置。结果里提示一句「本次按目录操作，未登记；要长期用 slug 调用请 `/lathe 扫描 <目录>`」。目录存在但没有 `metadata.json` 时按「metadata 缺失」处理（可自愈重建），不当成找不到 slug。
 - **枚举教程目录时（扫描、列表等），跳过以 `.` 开头的隐藏目录**——如验证工作区 `.lathe-verify/`，它们不是教程。
 - 后文中 `<TUTORIALS_DIR>` 指**默认基础目录**（`tutorials_base_path`）；涉及具体教程时按上述规则解析到其实际所在目录。`voices/` 目录始终位于默认基础目录下。
 
@@ -164,7 +165,7 @@ Lathe 是一套完整的动手实践型教程管理工具，涵盖生成、续�
 
 每个教程目录下有一个 `metadata.json` 索引文件。字段一览（**完整结构、字段语义与自愈协议见 [references/metadata.md](references/metadata.md)**）：
 
-`_warning`、`_needs_backfill`、`lathe_version`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`knowledge_backlog`、`syllabus_ids`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
+`_warning`、`_needs_backfill`、`lathe_version`、`part_versions`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`knowledge_backlog`、`syllabus_ids`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
 
 **读取几个已知字段时直接读 JSON 即可，无需加载 metadata.md。** 遇到以下情况才读：新建 metadata、写 `continuity` / `course_plan`、或文件缺失/损坏需要自愈。
 

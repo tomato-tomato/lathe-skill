@@ -106,6 +106,7 @@
 - 在 H1 之后、正文之前插入 SKILL.md 规定的“未验证”状态横幅（`lathe:verify-status` 标记块）；横幅不计入教程结构或知识点配额，`> [!RECALL]` 放在横幅之后。
 - **写前核对起点契约：** 本部分的文件/函数/命令/未完成项必须接上最后一部分的“下一部分起始状态”；如果接不上，先停止并向用户说明，不要静默改路线或重写旧部分。
 - 遵循 writing-core.md"教程结构"及其中的**续写变体**：顶部以 `> [!RECALL]` 间隔检索节拍开头（取材于 `covered_concepts`），`## 接下来` **之前**插入 `## 目标达成回顾`；写清“本部分结束时的文件状态”和“下一部分起始状态”。
+- **先还承诺，再讲新的：** 账本里 `promised_by` 指向更早部分、`plan_ref` 就是本次部分的条目（上一部分向读者保证「以后会讲」的），优先级高于 `next_hook` 与本 plan 项的其余 `planned` 条目，**必须本次讲掉**。确实讲不掉时按 knowledge-ledger.md「承诺的兑现与回滚」处理：退回 `queued`、更新 `plan_ref`、在正文重新点名顺延，并在覆盖回执单列一行 `未兑现：K（Part X 承诺）→ 已顺延 Part N`——不许静静留在 `planned` 里（`ledger_check.py` 会报 `已承诺未兑现`）。
 - **知识点**：构建名额 4-7（地基与 §0 承接章不占名额，计入总章 ≤9）。按 knowledge-ledger.md 决定的计划写；**走过步骤 3b 时不得在写作中途另行增删条目**（确需调整的在回执里逐条说明）。超出容量的写回积压，不压缩、不合并、不一次写多个部分。
 - **承接章与延后提醒**：上一部分有档 2 时写 §0 承接章；档 3 顺延与清单分批按 knowledge-ledger.md「延后提醒」在正文留痕；本部分讲到的积压条目在该章开头回指来源。
 - **`## 目标达成回顾` 内容**：陈述原定学习目标（`goal`）、列出已覆盖的内容与尚未覆盖的部分（如有）、给出步骤 2 的达成结论。客观克制，不催促收尾；末尾一句话提示选项：继续延伸新方向，或执行 `/lathe 续写 收尾 <slug>` 完结课程。由用户自行判断。
@@ -117,14 +118,14 @@
 
 读取现有文件，然后更新：
 
-- 将新部分文件名追加到 `parts` 数组；
+- 将新部分文件名追加到 `parts` 数组，并在 `part_versions` 里记 `"<part-NN.md>": "<当前技能版本>"`——它用来区分「本次新写的部分」与历史部分（0.6.0 之后新增的约束不该判旧部分违规，见 knowledge-ledger.md 脚本用法表）；
 - 将新查阅的来源 URL 追加到 `sources` 数组（去重）；
 - **维护 `changed_interfaces`：** 本部分有 API/签名/跨文件契约变化时，按 `metadata.md` 的字段规范追加条目（`file` / `symbol` / `from` / `to` / `call_sites` / `supersedes` / `part`）；同一符号只保留最新一条活跃条目；活跃超过 8 条，或旧条目被替代时，移到 `research.md` 的 `## Changed Interfaces Archive`。没有变化时不改（空数组保持空）。
   **若本次变更会让较早部分的某组检查点输出字面失配**（状态码、返回体形状、字段增删、错误结构等），必须在条目里写 `supersedes: ["part-NN.md#k"]`（k = 该部分正文里加粗的检查点组号）；**不要回头修改旧部分**。验证会跳过被登记的组并记 `historical`，旧部分的 `passed` 不被推翻。只影响 `runnable` 代码块的签名变化不登记 `supersedes`（由旧签名检查负责）。
 - **增量更新 `continuity`**（契约见 `<SKILL_DIR>/references/metadata.md`）：追加本部分新增的 `covered_concepts`（**只追加、不合并**）与 `fixed_numbers`、更新 `open_threads`（已提出但未展开的问题/伏笔，最多 10 条，每条 ≤80 字；已解决/溢出移到 `research.md` 的 `## Open Threads Archive`，不删除）、覆盖 `next_hook` 为本部分"接下来"指向的方向、`part_titles` 加入本部分标题、`updated_through` 设为本部分文件名、刷新 `updated_at`；若本部分明确告别了隐喻则置 `metaphor_retired: true`。摘要总量控制在 **1200 字软上限 / 2000 字硬上限**；这是**索引预算**，不是正文预算，超出时归档/压缩索引字段，不压缩课程正文。分字段上限见 `metadata.md`。**这一步不能省——省掉它，下次续写就要全文重读。**
 - **更新 `syllabus.json`（先于积压）**：按 knowledge-ledger.md「1. 账本」——讲掉的改 `taught` 并填 `at`/`depth`，顺延的改 `queued`，新增清单 / 必做练习（`E<part>-<k>`）/ 深化条目，去重命中记 `duplicate`，确认中被用户删掉的记 `dropped_by_user`；**不删除任何条目**；按行改写；新增 ID 补进 `metadata.syllabus_ids`；刷新 `updated_at`。
 - **更新 `knowledge_backlog`**：与账本 `queued` 保持一一对应（讲掉的移除、顺延的加入、闸门按用户选择执行）；重规划触发时输出草案，**用户确认后才改 `course_plan`**。清空写 `[]`。然后跑 `ledger_check.py <教程目录> --receipt part-NN.md`，必须闭合。
-- **更新 `continuity.exercise_carry`**：写入本部分引入新概念的必做练习（≤2 道）的承接结果 `{integrated, chapter, deferred}`（各 ≤3 条、每条 ≤40 字）；上一部分留下的承接已讲透的移除，并追加进 `covered_concepts`。
+- **更新 `continuity.exercise_carry`**：写入本部分引入新概念的必做练习（≤2 道）的承接结果 `{integrated, chapter, deferred}`（各 ≤3 条、每条 ≤40 字），同时给这些条目在账本里写 `promised_by: <本部分文件名>`；上一部分留下的承接已讲透的移除并追加进 `covered_concepts`，**没讲成的按「先还承诺，再讲新的」回滚**，不得静默留存。
 - 补齐步骤 2 中推断出的缺失字段（`goal`、`language`、`style_anchor`、`experience_level`、`topic_novelty`；缺 `changed_interfaces` 时补空数组）；缺 `course_plan` 时从 `next_hook` / `part_titles` 补一份 3-12 项路线图；用户重新定向或路线图漂移时同步更新 `course_plan`，并在报告里说明偏离原因和新的下一项；若本次补上了 `_needs_backfill` 中的字段，从数组移除；仍无法补的保留；
 - 用户提供或确认了本地项目路径时更新 `local_project_path`；
 - `model` 更新为*你*运行的模型（如 `QoderWork`）；`lathe_version` 更新为当前技能版本；
@@ -157,7 +158,17 @@
 当续写指令中含"收尾/完结/总结"意图时执行本模式——生成总结部分并完结课程，不引入新教学内容。
 
 1. **先判门禁，再付读取成本。** 门禁只需要三个小文件：`metadata.json`（`knowledge_backlog`、`continuity.exercise_carry`、`course_plan`、`parts`）+ `syllabus.json` + `research.md` 的归档小节——**不要先读正文**，门禁拒绝时那些读取全部白付（实测：门禁输入约 22 KB，而步骤 2 的正文读取约 137–182 KB）。
-   两条判据：账本中不得还有 `queued` 或 `planned` 条目（除非用户逐条显式降级为 `self-study`）；`course_plan` 的每一项都必须有对应的**常规**部分。任一不满足 → 按 `ledger_check.py <教程目录>` 的结果列出缺口（`queued` 与 `planned` **分组列出**，档 1 已承诺的条目单独点名），并给「① 补写一个 Part ② 逐条降级到自学清单 ③ 强制完结（总结部分按未讲清单如实列出）」三选一；**用户确认前不读正文、不写总结、不得把 `status` 置为 `completed`**。选 ② 的条目账本改 `self-study` 并写进 `research.md` 的 `## Self-study Backlog`；选 ③ 时账本保持原状态（`queued` / `planned` 不改），`knowledge_backlog` 与账本保持一致、不清空。账本缺失时先按 `metadata.md`「旧教程首次回填」建账并请用户确认。
+   跑 `ledger_check.py <教程目录> --finish` 拿分组结果，**两类缺口的性质不同，处置也不同**：
+
+   | 类别 | 是什么 | 可用选项 |
+   |---|---|---|
+   | **A 类真欠账** | `queued`（顺延未还）+ **已承诺未兑现**（`promised_by` 指向的部分已写完却仍是 `planned`） | ① 补写 K 个 Part（K = 缺口涉及的 `plan_ref` 数）② 逐条降级到自学清单 ③ 强制完结 |
+   | **B 类未开工路线项** | 其余 `planned`（属于 `course_plan` 里还没开工的项，含该项没有对应常规部分的情况——与「course_plan 悬挂项」是同一件事，不重复计） | **④ 按现状完结（默认）**：保留 `planned`、不改状态、不写自学清单，总结部分的「未讲清单」如实列出；当然也可以选 ① / ② / ③ |
+
+   - **A 类非空时不给 ④**——那是真有欠账，必须 ①/②/③ 三选一；A 类为空、只剩 B 类时默认 ④（「目标已达成、路线没走完」是正常状态，不该被当成欠账处理，更不该被逐条写成 `self-study`）。
+   - 任一类别非空时都要**列全 ID**再让用户选；**用户确认前不读正文、不写总结、不得把 `status` 置为 `completed`**。
+   - 选 ② 的条目账本改 `self-study` 并写进 `research.md` 的 `## Self-study Backlog`；选 ③ / ④ 时账本保持原状态（`queued` 仅 ③ 也保留原状），`knowledge_backlog` 与账本保持一致、不清空。
+   - 账本缺失时先按 `metadata.md`「旧教程首次回填」建账并请用户确认。
 2. **吸收教程**：同常规步骤 0、1、2（路径解析、按 `continuity` 新鲜度决定读取范围、目标达成评估）。**但收尾要覆盖全课程**，所以：`continuity` 可信时读取 `continuity` + 最后一部分全文，并对其余部分只读一级/二级标题（`grep -n '^#\{1,2\} ' <file>`）以获得逐部分回顾所需的骨架；`continuity` 过期时按路径 B 全文读取。若教程目录存在 `research.md`，读取其中的 `## Open Threads Archive`、`## Changed Interfaces Archive`、**`## Self-study Backlog` 与 `## Covered Concepts Archive`**，用于目标对照、覆盖核对和后续方向。**门禁已在步骤 1 判定完毕**，这一步只管取材所需的正文与归档。跳过本地项目路径询问；收尾不做新的网络研究（除非总结需要核实某个关键事实）。
 3. **确定部分编号**：同常规步骤 5 的规则（含复习部分在内的最大编号 + 1）。
 4. **写入总结部分** `part-NN.md`，内容要求：

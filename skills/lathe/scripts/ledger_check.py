@@ -29,7 +29,7 @@ SRC = ("user", "plan", "exercise", "deepen")
 TAGS = ("main", "foundation", "mergeable")
 DEPTH = ("full", "foundation", "ch0", "tier1")
 REQUIRED = ("id", "text", "src", "from", "tag", "plan_ref", "status")
-OPTIONAL = ("original", "parent", "at", "depth", "dup_of", "note")
+OPTIONAL = ("original", "parent", "at", "depth", "dup_of", "note", "promised_by")
 BACKLOG_FIELDS = ("id", "text", "from", "plan_ref", "priority")
 NUM_HEAD = re.compile(r"^(\d+)[.．、]")
 
@@ -46,13 +46,19 @@ def head_match(head: str, heads: set[str]) -> str:
     m = NUM_HEAD.match(head)
     if m and any(NUM_HEAD.match(h.strip()) and NUM_HEAD.match(h.strip()).group(1) == m.group(1) for h in heads):
         return "number"
-    if any(h.strip().startswith(head) or head.startswith(h.strip()) for h in heads):
-        return "prefix"
+    if len(head) >= 6:
+        hits = [h for h in heads if h.strip().startswith(head) or head.startswith(h.strip())]
+        if len(hits) == 1:
+            return "prefix"
     return "none"
 
 
 
-def check(root: Path, receipt: str | None, force_legacy: bool = False) -> int:
+def num_version(value) -> tuple:
+    return tuple(int(x) for x in re.findall(r"\d+", str(value or ""))[:3])
+
+
+def check(root: Path, receipt: str | None, force_legacy: bool = False, finish: bool = False) -> int:
     errors: list[str] = []
     warnings: list[str] = []
     drifted: list[str] = []
@@ -61,8 +67,16 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False) -> int:
         print(f"❌ {meta_path} 不存在：先按 metadata.md「metadata.json 自愈」重建")
         return 1
     metadata = load_json(meta_path)
-    nums = tuple(int(x) for x in re.findall(r"\d+", str(metadata.get("lathe_version") or ""))[:3])
-    legacy = force_legacy or nums < (0, 6, 0)
+    part_versions = metadata.get("part_versions", {}) or {}
+    tutorial_version = num_version(metadata.get("lathe_version"))
+    legacy = force_legacy or tutorial_version < (0, 6, 0)
+
+    def part_legacy(name: str) -> bool:
+        """0.6.0 之后续写过的旧教程，教程级版本已经升到 0.6.0，
+        历史部分只能靠 `metadata.part_versions` 里记录的写入版本判断。"""
+        if force_legacy:
+            return True
+        return num_version(part_versions.get(name) or metadata.get("lathe_version")) < (0, 6, 0)
     if force_legacy:
         print("ℹ️ 已按 --legacy 运行：0.6.0 新增的账本约束降级（检查历史部分时使用）")
     if not ledger_path.exists():
@@ -146,6 +160,18 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False) -> int:
                     drifted.append(f"{tag}（{target}#{head[:28]}）")
         elif pt.get("at"):
             errors.append(f"{tag} 状态 {status} 不应有 at")
+        promised = pt.get("promised_by")
+        if promised and not re.fullmatch(r"part-\d{2}\.md", str(promised)):
+            errors.append(f"{tag} promised_by 要写成 part-NN.md：{promised!r}")
+        if status == "planned" and promised:
+            ref = pt.get("plan_ref")
+            if isinstance(ref, int) and ref in written:
+                errors.append(
+                    f"{tag} 已承诺未兑现：{promised} 的练习承接说好在 Part {ref} 讲，"
+                    f"该部分已写完但状态仍是 planned——改 taught，或退回 queued 并在正文留提醒"
+                )
+        if status == "taught" and promised and pt.get("depth") != "tier1":
+            warnings.append(f"{tag} 是练习承接留下的承诺，讲掉后 depth 应为 tier1（当前 {pt.get('depth')!r}）")
         if status == "duplicate" and not pt.get("dup_of"):
             errors.append(f"{tag} duplicate 没写 dup_of")
         if status in ("self-study", "dropped_by_user") and not pt.get("note"):
@@ -166,7 +192,8 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False) -> int:
                 if item is None:
                     errors.append(f"{tag} planned 的 plan_ref {ref} 在 course_plan 里不存在")
                 elif item.get("part") in written:
-                    errors.append(f"{tag} 仍是 planned，但所属 plan 项（Part {item.get('part')}）已经写完——悬空条目")
+                    if not promised:  # 已承诺未兑现另有专门一条，别重复报
+                        errors.append(f"{tag} 仍是 planned，但所属 plan 项（Part {item.get('part')}）已经写完——悬空条目")
 
     queued = {pt.get("id") for pt in points if pt.get("status") == "queued"}
     backlog_ids = {b.get("id") for b in backlog}
@@ -188,8 +215,9 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False) -> int:
         path = root / p
         if "-review" in p or not path.exists():
             continue
+        part_is_legacy = part_legacy(p)
         for line in re.findall(r"\*本题涉及的知识点（[^\n]*", path.read_text(encoding="utf-8")):
-            if legacy and "积压 ID" not in line:
+            if part_is_legacy and "积压 ID" not in line:
                 continue  # 0.6.0 之前写的部分不要求写积压 ID
             m = re.search(r"积压 ID `([^`]+)`", line)
             if not m:
@@ -202,6 +230,30 @@ def check(root: Path, receipt: str | None, force_legacy: bool = False) -> int:
     counts = {s: sum(1 for pt in points if pt.get("status") == s) for s in STATUSES}
     summary = " · ".join(f"{s} {n}" for s, n in counts.items() if n)
     print(f"账本：{summary}（共 {len(points)} 条）")
+
+    if finish:
+        debt = [pt["id"] for pt in points if pt.get("status") == "queued"]
+        broken_promise = [pt["id"] for pt in points
+                          if pt.get("status") == "planned" and pt.get("promised_by")
+                          and isinstance(pt.get("plan_ref"), int) and pt["plan_ref"] in written]
+        roadmap = {}
+        for pt in points:
+            if pt.get("status") == "planned" and pt["id"] not in broken_promise:
+                roadmap.setdefault(pt.get("plan_ref"), []).append(pt["id"])
+        dangling_plan = [i.get("part") for i in plan if i.get("part") not in written]
+        print("收尾门禁分组：")
+        print(f"  A 类真欠账：queued {len(debt)} {debt or '—'} ｜ 已承诺未兑现 {len(broken_promise)} {broken_promise or '—'}")
+        for ref in sorted(roadmap, key=lambda x: (x is None, x)):
+            tag = "无 plan_ref" if ref is None else f"Part {ref}"
+            print(f"  B 类未开工路线项（{tag}）：{'、'.join(roadmap[ref])}")
+        print(f"  course_plan 还没有常规部分的项：{sorted(dangling_plan) or '无'}")
+        if debt or broken_promise:
+            print("  → A 类非空：只能 ① 补写 Part / ② 逐条降级 / ③ 强制完结")
+        elif roadmap or dangling_plan:
+            print("  → 只有 B 类：默认 ④ 按现状完结（保留 planned、不改状态，总结的未讲清单如实列出）")
+        else:
+            print("  → 无缺口：门禁通过")
+        return 0 if not errors else 1
 
     if receipt:
         mine = [pt for pt in points if pt.get("status") == "taught" and (pt.get("at") or "").startswith(receipt + "#")]
@@ -236,8 +288,9 @@ def main() -> int:
     ap.add_argument("tutorial_dir")
     ap.add_argument("--receipt", metavar="PART", help="打印该 part 的「本部分覆盖」行，如 part-03.md")
     ap.add_argument("--legacy", action="store_true", help="按 0.6.0 之前的规则检查（档 3 积压 ID 一条降级）")
+    ap.add_argument("--finish", action="store_true", help="按收尾门禁口径分组打印缺口（A 类真欠账 / B 类未开工路线项）")
     args = ap.parse_args()
-    return check(Path(args.tutorial_dir), args.receipt, args.legacy)
+    return check(Path(args.tutorial_dir), args.receipt, args.legacy, args.finish)
 
 
 if __name__ == "__main__":

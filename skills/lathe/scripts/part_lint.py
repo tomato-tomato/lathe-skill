@@ -38,20 +38,25 @@ CONTRACT_LINES = ("本部分结束时的文件状态", "下一部分起始状态
 ELLIPSIS = re.compile(r"^\s*(?://|#|--)?\s*(?:\.\.\.|…)\s*$", re.MULTILINE)
 
 
-def tutorial_legacy(path: Path) -> bool:
-    """同目录 metadata.json 的 lathe_version 早于 0.6.0（或没有该字段）时判为旧教程。
+def write_version(path: Path) -> str:
+    """这个部分当初是用哪个技能版本写的。
 
-    这只对「整门课都在 0.6.0 之前写完」有效。旧教程被 0.6.0 续写过一次后
-    `lathe_version` 会升到 0.6.0，此时历史部分仍需显式 `--legacy`。"""
+    优先取 `metadata.part_versions[<文件名>]`（逐部分记录），缺失时回落到教程级
+    `lathe_version`。旧教程被新版本续写一次后 `lathe_version` 会升级，
+    只有逐部分记录才能区分「本次新写的部分」和「历史部分」。"""
     meta = path.parent / "metadata.json"
-    version = ""
-    if meta.is_file():
-        try:
-            version = str(json.loads(meta.read_text(encoding="utf-8")).get("lathe_version") or "")
-        except Exception:
-            version = ""
-    nums = tuple(int(x) for x in re.findall(r"\d+", version)[:3])
-    return nums < (0, 6, 0)
+    if not meta.is_file():
+        return ""
+    try:
+        data = json.loads(meta.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    return str((data.get("part_versions") or {}).get(path.name) or data.get("lathe_version") or "")
+
+
+def tutorial_legacy(path: Path) -> bool:
+    nums = tuple(int(x) for x in re.findall(r"\d+", write_version(path))[:3])
+    return bool(nums) and nums < (0, 6, 0)
 
 
 def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
@@ -63,6 +68,8 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
     heads = headings(text)
     if force_legacy:
         notes.append("已按 --legacy 运行：0.6.0 新增的约束降级为提示（检查历史部分时使用）")
+    elif legacy:
+        notes.append(f"该部分由 v{write_version(path) or '未知（≤0.5.x）'} 写成，0.6.0 新增约束按历史部分降级为 ℹ️")
     if kind == "auto":
         kind = "review" if "-review" in path.name else ("regular" if "检查点" in heads else "finish")
     number = part_number(path.name)

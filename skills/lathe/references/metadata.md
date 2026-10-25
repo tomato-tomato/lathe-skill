@@ -60,6 +60,10 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
       "merged_ids": []
     }
   ],
+  "part_versions": {
+    "part-01.md": "0.6.0",
+    "part-02.md": "0.6.0"
+  },
   "syllabus_ids": ["<syllabus.json 中出现过的全部 id，按字母序>"],
   "style_anchor": "<主锚点作者 id，如 nystrom>",
   "repo": "<远程 URL 或空>",
@@ -104,6 +108,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 | `course_plan` | 生成时初始化；续写时维护 | 3-12 项课程路线图，每项 `{part, title, goal, prerequisites}`。part-01 完成第 1 项；续写优先按下一项推进，用户指导可覆盖。**它是 metadata 字段，不是 `index.md`** |
 | `changed_interfaces` | 生成时初始化/写入；续写时维护 | 跨部分活跃接口变更清单；按符号记录，最多 8 条；字段 `file` / `symbol` / `from` / `to` / `call_sites` / `supersedes` / `part`；超出或同符号被替代时归档到 `research.md`。无变化时为空数组 |
 | `knowledge_backlog` | 生成时初始化；续写时维护 | 账本 `queued` 条目的投影（以 `syllabus.json` 为准）：已承诺要讲、被名额挤出的知识点队列。每项 `{id, text, from, plan_ref, priority, merged_ids}`；最多 14 条（闸门选 ① 时按新增 Part 上调）、`text` ≤60 字、`priority` 固定 `core`（自学条目只在 `research.md`）、`merged_ids` 可省略。先进先出，讲完从数组移除（账本里记 `taught`）。无内容写 `[]`；旧数据里 `priority: "self-study"` 的条目下次写回时迁到 `## Self-study Backlog`。来源、闸门、去重规则见 knowledge-ledger.md |
+| `part_versions` | 每次写一个部分时更新 | **逐部分的写入版本**：键是 `part-NN.md`，值是当时写它用的技能版本（如 `0.5.5` / `0.6.0`）。旧教程被新版本续写一次后，教程级 `lathe_version` 会升到新版、丢掉「哪部分是旧的」这个信息；`part_lint.py` / `ledger_check.py` 靠它把「0.6.0 之后新增的约束」对历史部分自动降级（历史部分也不参与交付自检）。缺失时回落到 `lathe_version`；不要求回填旧数据 |
 | `syllabus_ids` | 生成时初始化；每次写账本时同步 | 账本 ID 镜像：`syllabus.json` 出现过的全部 `id`，按字母序、只增不删，用来发现被整条删掉的账本条目（knowledge-ledger.md 不变量 6）。旧教程在建账本那次写回补上 |
 | `style_anchor` | 生成时选定 | 风格标杆主锚点 id。续写沿用，避免重复加载 style-benchmarks.md |
 | `continuity` | 续写/收尾每次更新 | **续写连续性摘要**，见下方专节 |
@@ -226,7 +231,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
 
 ## syllabus.json（知识点账本）
 
-结构、书写格式、六种状态、不变量（含 `syllabus_ids` ID 镜像）、读写分工、旧教程回填与损坏恢复，统一见 `<SKILL_DIR>/references/knowledge-ledger.md`「1. 账本」。本文件只负责 `metadata.json` 里与它相关的两个字段：`knowledge_backlog`（`queued` 的投影）与 `syllabus_ids`（ID 镜像）。
+结构、书写格式、六种状态、不变量（含 `syllabus_ids` ID 镜像）、读写分工、旧教程回填与损坏恢复，统一见 `<SKILL_DIR>/references/knowledge-ledger.md`「1. 账本」。本文件只负责 `metadata.json` 里与它相关的三个字段：`knowledge_backlog`（`queued` 的投影）、`syllabus_ids`（ID 镜像）与 `part_versions`（逐部分的写入版本）。
 
 ---
 
@@ -246,6 +251,7 @@ description: Lathe metadata.json 完整结构、字段语义、continuity 摘要
    - `course_plan` → 从 `parts`、各部分一级标题与"接下来"提炼 3-12 项；无法提炼时留空数组；
    - `changed_interfaces` → 空数组；旧教程的接口变更无法可靠推断，不强行回填；
    - `knowledge_backlog` → **若 `syllabus.json` 存在且可解析，按其中 `status: queued` 的条目重建**（这是账本独立成文件的主要收益）；账本也不存在时写空数组（未讲的知识点无法从正文可靠推断；若某部分「本部分不覆盖」里点名了顺延条目，可作为线索列出并写入 `_needs_backfill`）；
+   - `part_versions` → 旧 metadata 不记录版本，无法可靠推断：缺失即回落到教程级 `lathe_version`，**不写进 `_needs_backfill`**；
    - `_needs_backfill` → 记录 `changed_interfaces`、`knowledge_backlog`、`open_threads_archive` 等无法可靠推断的字段；用户补上后从数组移除；
    - `continuity` → 按上方字段语义从正文提炼（含 `open_threads`，从各部分"接下来"的未决问题提取；`exercise_carry` 从最后一部分的「练习承接」行推断，推不出则三个数组都空；归档内容无法可靠推断，留空）；
    - `voice` → 默认 `plainspoken`（正文不可判定）；`status` → `unverified`；
