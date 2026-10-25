@@ -34,6 +34,7 @@ def lint(path: Path, kind: str) -> int:
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
     warnings: list[str] = []
+    notes: list[str] = []
     heads = headings(text)
     if kind == "auto":
         kind = "regular" if "检查点" in heads else "finish"
@@ -86,7 +87,7 @@ def lint(path: Path, kind: str) -> int:
                 errors.append(f"{where}：runnable 块含整行 `...` 省略（代码不完整）")
             n = len(b["body"].splitlines())
             if n > 120:
-                warnings.append(f"{where}：runnable 块 {n} 行，超过约 100-120 行的拆分信号")
+                notes.append(f"{where}：runnable 块 {n} 行（超过约 100-120 行的观察值）——可按文件/逻辑段分段呈现，不裁内容；这不是上限")
     if "fragment" in types and "runnable" not in types and "## 检查点" not in text:
         errors.append("有 fragment 但没有覆盖最终状态的 runnable 块或检查点")
     if "exercise" in types and not re.search(r"参考答案|检查方式", text):
@@ -113,7 +114,7 @@ def lint(path: Path, kind: str) -> int:
     prose = strip_code(text.split("\n## 来源", 1)[0])
     cjk = len(re.findall(r"[\u4e00-\u9fff]", prose))
     if cjk > 10000:
-        warnings.append(f"正文约 {cjk} 个中文字符，超过约 10,000 的拆分信号")
+        notes.append(f"正文约 {cjk} 个中文字符（超过约 10,000 的观察值）——只看里程碑/改动面是否该拆部分，篇幅长不是缺陷，不得压缩解释")
 
     if kind == "regular":
         pre = next((i for i, h in enumerate(heads) if h.startswith("前置条件")), -1)
@@ -124,6 +125,8 @@ def lint(path: Path, kind: str) -> int:
     runnable = sum(1 for t in types if t in ("runnable", "expected_failure"))
     print(f"代码块：{len(blocks)} 个，其中可执行 {runnable} 个")
 
+    for m in notes:
+        print(f"ℹ️ {m}")
     for w in warnings:
         print(f"⚠️ {w}")
     if errors:
