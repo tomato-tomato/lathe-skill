@@ -23,8 +23,10 @@ Lathe 是一套面向 LLM 编码助手的**动手实践型教程生成技能体�
 > - **外部清单可带深度**：备注写 `深度=做/讲/知` 表示实现、讲清或知道即可；个人“完成”勾选不会自动变成 `taught`。
 > - **旧课程原地兼容**：0.6.0 课程继续使用根目录旧辅助文件，不自动迁移、不自动转换成 Markdown，也不创建 `_lathe/`。一门课程不能混用两套布局；发现混放会列出冲突并停止写入。
 > - **所有操作统一按布局取路径**：生成、续写、收尾、复习、列表、验证、提问和面试都先看 metadata 的位置，一次性确定整套辅助文件路径，不逐文件回退。
+> - **收尾模块独立**：收尾规则从 `extend.md` 拆到 `finish.md`，常规续写不加载收尾；新课程 metadata 的完整模板在 `assets/metadata.template.json`，只在生成时读取。
+> - **检查器同步**：`part_lint.py` 支持编号检查点（如 `## 10. 检查点`），并读取 `verify-result.json`，已验证的 part 不再要求未验证横幅；档 3 提醒只统计必做练习。
 
-> 本教程适用于 **QoderWork** 或 **QoderWork CN** 桌面客户端。本仓库中的技能在这两款客户端中使用过；技能采用标准 Agent Skills 布局（SKILL.md + references/ 子目录），也已确认兼容 Reasonix 等支持该标准的终端 Agent（见[常见问题](#常见问题)），其他场景需要注意验证
+> 本教程适用于 **QoderWork** 或 **QoderWork CN** 桌面客户端。本仓库中的技能在这两款客户端中使用过；技能采用标准 Agent Skills 布局（SKILL.md + references/，并附带 assets/ 与 scripts/），也已确认兼容 Reasonix 等支持该标准的终端 Agent（见[常见问题](#常见问题)），其他场景需要注意验证
 
 ## 目录
 
@@ -64,13 +66,21 @@ unzip lathe-0.7.0.zip -d ./skills-download
 skills-download/
 └── lathe/                          ← 统一技能文件夹
     ├── SKILL.md                     ← 入口路由 + 共享配置（含版本号）
+    ├── assets/                      ← 静态模板（按需读取）
+    │   └── metadata.template.json   ← 新课程 metadata 完整模板；续写/验证不读
+    ├── scripts/                     ← 纯标准库 Python 3 工具（按需调用）
+    │   ├── lathe_common.py          ← 共享解析/布局/知识表工具
+    │   ├── ledger_check.py          ← 知识表对账/收尾/结构检查
+    │   ├── part_lint.py             ← Part 结构/契约/代码块检查
+    │   └── trial_run.py             ← runnable 试跑
     └── references/                  ← 模块（按需加载，请勿单独移动）
         ├── writing-core.md          ← 写作核心（共享：结构/配额矩阵/标注/不变量/研究纪律）
         ├── knowledge-ledger.md      ← 知识表（共享：七列/六态/池选点/配额/兼容）
         ├── metadata.md              ← metadata 规范（共享：字段/continuity/course_plan/双布局/自愈）
         ├── style-benchmarks.md      ← 风格标杆（共享：仅生成时选定主锚点）
         ├── generate.md              ← 生成教程模块
-        ├── extend.md                ← 续写 / 收尾模块
+        ├── extend.md                ← 续写模块
+        ├── finish.md                ← 收尾模块（单独加载；常规续写不读）
         ├── review.md                ← 复习模块
         ├── interview.md             ← 面试文档模块
         ├── verify.md                ← 验证模块
@@ -81,11 +91,13 @@ skills-download/
         └── list.md                  ← 列表模块
 ```
 
-> `references/` 下的前四个文件是**共享模块**（多个操作引用的单一事实源），其余为每项操作各自的协议文件。它们均**按需加载**：例如列表、提问、扫描不会读取 `writing-core.md`，续写不会读取 `style-benchmarks.md`。
+> `references/` 下的前四个文件是**共享模块**（多个操作引用的单一事实源），其余为每项操作各自的协议文件。它们均**按需加载**：例如列表、提问、扫描不会读取 `writing-core.md`，续写不会读取 `style-benchmarks.md`；收尾走 `finish.md`，常规续写不会加载收尾规则。
+
+> `assets/metadata.template.json` 只在**新建课程写 metadata** 时读取，是完整字段模板；续写、验证、复习都不加载它。`scripts/` 是三个入口脚本加 `lathe_common.py` 共享模块，按需调用，不进入写作上下文。
 
 > 压缩包内仅包含 `lathe/` 技能文件夹本身；本使用教程不随包分发，可在本仓库的 `docs/skills-tutorial.md` 查阅。
 
-> **提示：** 安装时必须连同 `references/` 子目录一起复制——它是技能的标准布局（Anthropic Agent Skills 规范），模块文件按需加载，能减少每次调用的上下文开销。
+> **提示：** 安装时必须连同 `references/`、`assets/`、`scripts/` 一起复制——少了 `assets/` 就没有 metadata 模板，少了 `scripts/` 就无法跑结构/账本/试跑检查。三者都是技能的一部分，不是可选的示例文件。
 
 ### 2. 安装技能
 
@@ -244,12 +256,15 @@ echo '{"tutorials_base_path": "~/my-tutorials", "tutorial_paths": {}}' > ~/.lath
 │       ├── research.md            ← 按需：接口/线程归档与勘误
 │       ├── verify-result.json     ← 按需：验证结果
 │       ├── interview.md           ← 按需：未配置外部面试路径时的 fallback
+│       ├── assets/                ← 按需：课程自己的图片/数据/脚本
 │       └── verify-workspace/      ← 按需：验证工作区，可安全删除
 └── voices/                        ← 自定义语气预设（始终位于默认基础目录）
     └── <名称>.md                  ← voice 规范文件
 ```
 
-`research.md`、`verify-result.json`、`interview.md` 和 `verify-workspace/` 都是按需创建，不会预建空文件。
+`research.md`、`verify-result.json`、`interview.md`、`assets/` 和 `verify-workspace/` 都是按需创建，不会预建空文件。
+
+> 注意：技能包里的 `lathe/assets/` 是**全局模板目录**（目前是 `metadata.template.json`）；课程里的 `_lathe/assets/` 是**该课程自己的素材目录**。两者不是同一个目录，课程素材不要写进技能包。
 
 > **旧课程原地兼容：** 0.6.0 课程继续把 `metadata.json`、`syllabus.json`、`research.md`、`verify-result.json` 和 `.lathe-verify/` 放在课程根目录。技能不会把它自动转换为 Markdown 知识表，也不会自动迁移到 `_lathe/`。一门课程只能采用一种布局；两处 metadata 同时存在或辅助文件跨布局混放时，技能会列出冲突并停止写入。
 >
@@ -296,7 +311,7 @@ AI 用**一条消息**集中收集写作前需要的全部信息，不再多轮�
 - **澄清问题**（仅在主题宽泛时出现，最多一个）
 - **仓库**：是否针对特定代码仓库（URL 和分支）
 - **工具链版本与学习目标**：如 *"我将基于 **Go 1.22** 来写——可以吗？"*；同时 AI 会基于主题与你的回答提炼一句可评估的**学习目标**（`goal`）一并请你确认——它是后续续写时"目标达成回顾"与收尾完结的判定基准
-- **知识清单策略（三选一）**：① 自动生成完整清单（默认）；② 使用你在消息中粘贴或指定路径的清单；③ 自动生成后与你的清单合并、拆分并去重。外部文件只在导入时读取，导入后 `_lathe/knowledge-points.md` 是唯一知识点事实源
+- **知识清单策略（三选一）**：① 自动生成完整清单（默认）；② 使用你在消息中粘贴或指定路径的清单；③ 自动生成后与你的清单合并、拆分并去重。外部文件只在导入时读取，导入后 `_lathe/knowledge-points.md` 是唯一知识点事实源。外部表若有 `短标题` 列，导入时优先使用；没有就按 `知识点` 原文压缩到 ≤60 字
 
 对某项未作答时，AI 会采用合理默认值并告知，不再追问。若同时给了粘贴清单和外部路径，AI 会先请你选择一个用户清单来源，避免重复导入。
 
@@ -1274,7 +1289,7 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 
 ### 检查脚本（`skills/lathe/scripts/`）
 
-技能自带三个纯标准库 Python 3 脚本，写作型操作有 shell 时会自动调用，你也可以手动跑：
+技能自带三个纯标准库 Python 3 入口脚本（共用 `lathe_common.py`），写作型操作有 shell 时会自动调用，你也可以手动跑：
 
 ```bash
 python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-03.md          # 结构、契约四行、代码块类型、练习上限、实写章数
@@ -1285,12 +1300,13 @@ python3 <技能目录>/scripts/ledger_check.py <教程目录> --receipt part-03.
 python3 <技能目录>/scripts/ledger_check.py <教程目录> --finish       # 收尾检查：列出全部 planned/queued + 未学完提示模板；不拦截收尾
 python3 <技能目录>/scripts/ledger_check.py <教程目录> --finish --receipt part-05.md  # 校验总结是否写了未学完提示、全部剩余 ID 与续写入口
 python3 <技能目录>/scripts/ledger_check.py <教程目录> --continuity   # 索引预算与条数上限实测 + 点名该归档哪几条
+python3 <技能目录>/scripts/ledger_check.py <教程目录> --structure    # 检查课程根目录/`_lathe/` 越界文件；默认只警告
 
 # 检查旧课程历史部分时可按脚本说明加 --legacy，将后加约束降级为提示
 # ledger_check.py 始终传课程根目录；它会根据 metadata 位置判定新旧布局
 ```
 
-`trial_run.py` 支持 Rust（rustc）、Python、JavaScript（node）的单文件块；依赖前文代码或外部依赖的块标为「需拼工程」，shell 命令块只做语法检查、从不执行。它不是 `/lathe 验证`：不写当前布局的验证结果，不改横幅与 `status`。
+`trial_run.py` 支持 Rust（rustc）、Python、JavaScript（node）和 TypeScript（`tsc --noEmit --strict` + `tsx` 运行）的单文件块；TypeScript 在工具缺失时会打印手动命令，不自动联网安装。依赖前文代码或外部依赖的块标为「需拼工程」，shell 命令块只做语法检查、从不执行。它不是 `/lathe 验证`：不写当前布局的验证结果，不改横幅与 `status`。
 
 ### 部分文件（part-NN.md）
 
