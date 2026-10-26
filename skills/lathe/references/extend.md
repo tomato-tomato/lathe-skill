@@ -2,7 +2,7 @@
 
 为已有课程添加一个新 Part，并延续它的示例、数字、voice、风格锚点与正文契约。
 
-**常规续写先读：** `<SKILL_DIR>/references/writing-core.md`、`knowledge-ledger.md`、`metadata.md`。收尾模式先用本文件与课程 metadata/canonical ledger 判门禁；通过后再加载写作规范和正文。
+**常规续写先读：** `<SKILL_DIR>/references/writing-core.md`、`knowledge-ledger.md`、`metadata.md`。收尾模式先读 canonical ledger 的剩余点并决定是否写「未学完」提示；再加载写作规范和正文。
 
 ## 触发与边界
 
@@ -38,7 +38,7 @@
 
 从 metadata 沿用：控制性示例、固定数字、隐喻状态、goal、course_plan、voice、language、style_anchor、experience、novelty、工具版本、仓库、接口变更与本地项目路径。不要重新选择或静默升级。
 
-- `course_plan` 指定默认 Part 方向；canonical ledger 决定具体知识点及状态。
+- `course_plan` 只是 Part 级叙事大纲，提供方向参考；canonical ledger 的池、行序、到期承诺与本次上下文共同决定具体知识点。**不要按 `course_plan` 把点分给 Part。**
 - `next_hook` 只提供衔接语境，不是点队列。
 - 当前布局 research 只用于来源、接口归档、线程与勘误，不承载知识点状态。
 - legacy 缺 `course_plan` 时可从目标、标题与衔接推断 2–12 项；先展示后写。新课程不得从 `next_hook` 生成隐藏知识点。
@@ -51,40 +51,47 @@
 
 用户本次给出的临时主题、知识清单或“顺便讲”内容，必须在选点前归一化进当前布局的 canonical ledger：
 
-- 新课程：在固定八列表新增 `来源=user` 行，分配稳定 ID，保留原文到备注；
+- 新课程：在固定七列表新增 `来源=user` 行，分配稳定 ID，保留原文到备注；
 - legacy：在 `syllabus.json` 新增兼容 point，保持未知字段与 JSON 格式；
 - 拆分复合项，完全重复记 `duplicate`，部分重叠改为 `deepen`；
-- 先写点及预定 Part，再参与配额，不把用户内容藏在 `next_hook`、research 或 metadata。
+- 先写入池，再参与配额；**不要预定点属于哪个 Part**，也不把用户内容藏在 `next_hook`、research 或 metadata。
 
 用户直接编辑表留下空 ID 时，本次写操作先分配 ID。用户删除整行时按 knowledge-ledger.md 区分主动删除与损坏；不确定就停止并确认。
 
-### 5. 按硬优先级选本 Part
+### 5. 按硬优先级从池中选本 Part
 
-在同一配额池严格依次选择：
+先做一次**选点会诊**，输入至少包括：
 
-1. **本 Part 到期的 `promise:` 条目**；
+1. 用户本次需求/指导，以及本次新增的池条目；
+2. 最后一个常规 Part 的“结束状态 / 下一部分起始状态 / 本部分不覆盖”；
+3. 本地代码进度（`local_project_path` 的 git 状态、最近提交、必要 diff、测试结果、当前接口）；
+4. 到期承诺（`promise:` 来源 Part 已写完且仍未讲）；
+5. 池中 `queued` / `planned` 的行序、类型、深度、备注。
+
+然后在全池中严格依次选择：
+
+1. **已到期的 `promise:` 条目**；
 2. **本次用户新增条目**；
-3. **`queued`**，先进先出且本 Part 预计项优先；
-4. **当前 `course_plan` 项的 `planned`**。
+3. **`queued`**，先进先出；
+4. **`planned`**，按表内行序。
 
-到期承诺硬优先于用户新增，不得被挤出。构建类型最多 7 个，正常目标 4–7；候选确实不足 4 时按“不凑数”允许少于 4，但该 Part 还有未选构建候选时不得少选。`foundation` 使用地基额度，`carry` 使用 §0 承接额度；两者不占构建名额但都计入总章 ≤9。容量不足时按优先级保留：后续路线项维持 `planned`，当前项或临时项转 `queued`。
+到期承诺硬优先于用户新增，不得被挤出。行序是默认推荐；如果因为用户方向、代码进度、前置未满足或深度不合适而跳过更靠前的点，必须在写前计划写明原因。构建类型最多 7 个，正常目标 4–7；候选确实不足 4 时按“不凑数”允许少于 4。`foundation` 使用地基额度，`carry` 使用 §0 承接额度；两者不占构建名额但都计入总章 ≤9。容量不足时按优先级保留：本次新增/承诺装不下转 `queued`，其他候选保持 `planned`。
 
 知识表备注含 `深度=做/讲/知` 的条目是外部导入写作指令：`做` 按完整构建，`讲` 可复用已有代码但仍需可观察验证，`知` 优先并入相邻构建章或作为地基背景。不得把所有深度统一升格为 `做`；详情见 writing-core.md「外部清单深度」。
 
-到期承诺确实讲不成时保持/转 `queued`，保留原承诺来源，更新预计 Part，并在新正文和回执点名“未兑现”；不得静默留作到期 `planned`，也不得自行降级或删除。
+到期承诺确实讲不成时保持/转 `queued`，保留原承诺来源，并在新正文和回执点名“未兑现”；不得静默留作普通 `planned`，也不得自行降级或删除。**不预测具体 Part 编号。**
 
 ### 6. 写前计划确认
 
-有用户新增、顺延、去重、闸门、路线重规划、planned 变更或 legacy 首次回填时，展示 knowledge-ledger.md 的计划模板，并与本地路径确认合并成一条消息。计划至少列：
+有用户新增、顺延、去重、闸门、大纲重规划、planned 变更、0.6.1 八列表迁移或 legacy 首次回填时，展示 knowledge-ledger.md 的计划模板，并与本地路径确认合并成一条消息。计划至少列：
 
 ```text
 写前计划确认（part-NN）
-① 到期承诺：…
+① 选点依据：用户需求 … ｜ 上次结束状态 … ｜ 本地代码进度 … ｜ 到期承诺 …
 ② 用户新增：…
-③ queued：…
-④ 当前 planned：…
-⑤ 本部分选中：构建 N / 通常 4–7、最多 7；少于 4 说明候选耗尽；地基 F；承接 C；总章 T / ≤9
-⑥ 顺延、去重、闸门与路线调整：…
+③ 本部分选中：构建 N / 通常 4–7、最多 7；少于 4 说明候选耗尽；地基 F；承接 C；总章 T / ≤9
+④ 未选候选与原因：池中行序前几条；为什么这次不讲
+⑤ 顺延、去重、闸门与 course_plan 大纲调整：…
 ```
 
 拿到回复再写正文。用户明确“直接写”可跳过常规确认，但仍须先完成 ledger 入表、配额选择和闸门；生成规则不适用此豁免。
@@ -100,9 +107,9 @@
 - H1 后插入未验证横幅，再写 `[!RECALL]`；
 - 起点必须接上最后 Part 的文件、符号、命令与未完成项；接不上就停止说明，不静默改路线；
 - 按 writing-core.md 的续写结构写，`## 接下来` 前加入 `## 目标达成回顾`；
-- 先讲到期承诺，再讲用户新增、queued、planned；旧 queued/承诺章节开头回指来源；
+- 按选点顺位讲到期承诺、用户新增、queued、planned；旧 queued/承诺章节开头回指来源；
 - 上一部分存在档 2 时，在前置条件后写一个 §0 承接章，最多 2 条；档 3 与本次顺延按 ID 留痕；
-- 写清本部分结束状态、下一部分起始状态、非目标与练习承接；
+- 写清本部分结束状态、下一部分起始状态、非目标、练习承接与未选候选（按 ID）；
 - 只修改新 Part，不回改旧正文，不因本次接口变化修补旧检查点；跨 Part 变更写 `changed_interfaces`；
 - 完成两轮自检，运行 `part_lint.py` 与 `trial_run.py --run`。
 
@@ -111,8 +118,8 @@
 正文完成后，以事实更新同一 ledger：
 
 - 已讲条目改 `taught`，写真实 `at:part-NN.md#<标题>` / legacy 等价位置与深度；
-- 未讲成的到期承诺和当前项改/保持 `queued`，保留 promise 并更新预计 Part；
-- 后续路线点维持 `planned`；新增练习承诺以 `exercise` + `carry` 入表；
+- 未讲成的到期承诺改/保持 `queued`，保留 promise；不要写 Part 预测；
+- 未选候选维持 `planned`；新增练习承诺以 `exercise` + `carry` 入表；
 - 去重、用户选择的自学/删除状态按规范写；模型不得自行设置；
 - 新课程按数据行重建“进度”和六态统计缓存；legacy 刷新其账本时间与兼容字段。
 
@@ -127,7 +134,7 @@
 - continuity 只更新可重建缓存：控制性示例、固定数字、隐喻状态、open threads、`next_hook`、最近标题、时间；
 - `covered_concepts` 从 canonical ledger 的最新 `taught` 行重建最近 24 条，不归档、不作为事实源；
 - 知识点状态、排队与练习承诺不写入 continuity；
-- 路线漂移时更新 Part 级 `course_plan` 并报告原因；补齐可推断缺字段；
+- 若本次选点与大纲下一项不同，更新 Part 级 `course_plan` 大纲并报告原因；**不要同步点级 Part 字段**；补齐可推断缺字段；
 - 更新本地项目路径、模型、当前技能版本，`status` 设 `unverified`；原为 `completed` 时课程重新开放；
 - metadata 与 continuity 写回后，依次运行 `ledger_check.py <COURSE_DIR> --receipt part-NN.md` 和 `--continuity`；前者确认新 Part 已进入 `parts` 且写前计划逐点闭合，后者检查缓存预算。失败先修再交付，超限只修剪缓存，不压缩正文。
 
@@ -152,16 +159,16 @@ metadata 与 ledger 写完后处理：
 
 ```text
 知识表：<实际 canonical 路径>
-进度：已完成 X / 计划内 Y（Z%）；queued Q；下一路线项 …
+进度：已完成 X / 计划内 Y（Z%）；queued Q；池中剩余 planned R …
 ```
 
-随后粘贴本部分覆盖、顺延/去重、承诺兑现、计划/实写章数、试跑与 ledger 回执。报告新 Part 路径、课程是否重新开放、路线漂移、continuity 重建和面试同步结果。
+随后粘贴本部分覆盖、未选候选与原因、顺延/去重、承诺兑现、计划/实写章数、试跑与 ledger 回执。报告新 Part 路径、课程是否重新开放、大纲漂移、continuity 重建和面试同步结果。
 
 ## 收尾模式
 
 收尾生成一个总结 Part，不引入新教学内容。
 
-### A. 先从 canonical points 判门禁
+### A. 先读剩余点，不拦截收尾
 
 先按 metadata 位置解析布局，只读取实际 metadata、canonical ledger 和必要的当前布局 research 归档；不要先读正文。运行：
 
@@ -169,22 +176,17 @@ metadata 与 ledger 写完后处理：
 python3 <SKILL_DIR>/scripts/ledger_check.py <COURSE_DIR> --finish
 ```
 
-直接从 canonical points 分两类：
-
-| 类别 | 定义 | 选择 |
-|---|---|---|
-| A 类真欠账 | `queued` + 已到期但仍未兑现的 promise | ① 补写涉及路线的 Part；② 用户逐条改为 `self-study`；③ 用户确认强制完结 |
-| B 类未开工路线项 | 其余 `planned`，即尚未推进的 course_plan 内容 | ④ 按现状完结 `[默认]`，保留 `planned`；也可选 ①/②/③ |
+脚本会列出全部 `planned` / `queued` 剩余点，并给出总结必须写的提示模板。它**不再按 A/B 类拒绝收尾**：用户可以学完再收，也可以带着剩余点收尾，但后者必须在总结里留痕。
 
 规则：
 
-- A 类非空时不给 ④；A 为空、只有 B 时默认 ④。
-- 缺口必须列全 ID；用户确认前不读正文、不写总结、不改 `status`。
+- 剩余点必须列全 ID；用户确认前不读正文、不写总结、不改 `status`。
+- 用户可以选择：继续写一个 Part；直接收尾并写「未学完」提示；或把部分点明确改为 `self-study` / `dropped_by_user`。后两种状态只能由用户显式选择。
 - 无法取得回复时停在门禁并原样报告选项，不写草稿或新增状态字段。
-- 选择自学只改 canonical ledger 的状态与备注；新课程改知识表，legacy 改旧 JSON point。不要写 research 镜像。
-- 选择强制或按现状完结时未处理行保持原状态。legacy 账本缺失先回填并确认。
+- 选择自学/删除只改 canonical ledger 的状态与备注；新课程改知识表，legacy 改旧 JSON point。不要写 research 镜像。
+- legacy 账本缺失先回填并确认。
 
-### B. 门禁通过后吸收课程
+### B. 吸收课程
 
 此时才加载 writing-core.md 与 knowledge-ledger.md。continuity 可信时读它、最后常规 Part 全文，并从其他 Part 读取一级/二级标题；不可信时全读并重建。research 只读取接口、线程与勘误等允许归档；旧格式的点级镜像仅为历史兼容，忽略且不续写。收尾不询问本地项目，不做新研究，除非必须核实关键事实。
 
@@ -200,16 +202,32 @@ python3 <SKILL_DIR>/scripts/ledger_check.py <COURSE_DIR> --finish
 6. `## 练习方向`
 7. `## 寄语`
 
+如果 canonical ledger 仍有 `planned` / `queued`，在 H1 之后加入：
+
+```markdown
+> [!WARNING]
+> **完成状态：未学完（剩余 N 条知识点）。**
+> 未讲清单见下方「未讲清单（按 ID）」。之后可以运行 `/lathe 续写 <slug>` 继续学习剩余知识点；续写会把课程重新开放为 `unverified`。
+```
+
 未讲清单直接按 canonical ledger 对所有非 `taught` / `duplicate` 行分组，逐 ID 说明未讲原因与捡回方式，并列六态总数。总结不写 `## 检查点`、`## 你将构建什么`、`## 前置条件`、`## 来源`、四个交接契约行或验证横幅。运行 `part_lint.py <总结文件> --kind finish`。
+
+总结写入后运行：
+
+```text
+python3 <SKILL_DIR>/scripts/ledger_check.py <COURSE_DIR> --finish --receipt <总结文件>
+```
+
+脚本会校验「未学完」提示、全部剩余 ID 和「续写」继续学习提示；缺任何一项先补再交付。
 
 ### D. 收尾写回
 
-- 新总结加入 `parts` 和 `part_versions`；`status` 设 `completed`；更新模型与技能版本。
+- 新总结加入 `parts` 和 `part_versions`；`status` 设 `completed`（允许仍有 `planned` / `queued`）；更新模型与技能版本。
 - canonical ledger 只执行用户在门禁明确选择的状态变化并刷新缓存/时间；不新增、不删除教学点。
 - continuity 更新标题、时间、线程与完结衔接；总结没有新知识，不伪造 `covered_concepts`，该缓存仍从 taught points 重建。
-- `course_plan` 保留；接口变更保持；未解决线程按 metadata.md 归档到当前布局 research。
-- 运行 `ledger_check.py <COURSE_DIR>` 与 `--continuity`。
-- 报告总结路径、canonical 路径、门禁选择、最终进度和 `completed`；课程以后再次续写会自动重新开放。
+- `course_plan` 保留；如收尾时路线已偏离，按需改写大纲；接口变更保持；未解决线程按 metadata.md 归档到当前布局 research。
+- 运行 `ledger_check.py <COURSE_DIR> --finish --receipt <总结文件>` 与 `--continuity`。
+- 报告总结路径、canonical 路径、剩余点、最终进度和 `completed`；课程以后再次续写会自动重新开放，剩余点继续参与选点。
 
 ## 写入边界
 

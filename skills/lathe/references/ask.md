@@ -17,7 +17,7 @@
 
 | 布局 | metadata | canonical ledger | research |
 |---|---|---|---|
-| 0.6.1 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/research.md` |
+| 0.7.0 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/research.md` |
 | legacy 课程 | `metadata.json` | `syllabus.json` | `research.md` |
 
 不得按单个文件是否存在逐文件 fallback，也不得拼接两套布局。两处 metadata 同时存在或辅助文件混放时，列出冲突并停止写入。legacy 课程只在根目录旧布局原地兼容，绝不创建 `_lathe/`。后文的 metadata、canonical ledger、research 均指本表中当前布局对应的路径。
@@ -68,7 +68,7 @@
 
 | 选项 | 写入 |
 |---|---|
-| 1 确认修改 | ① 只替换确认块里的「原文」片段，不顺手改其他正文、不改 voice 和结构；② 该部分的验证状态横幅换回「未验证」模板（`lathe:verify-status` 标记块，写明「勘误于 <日期>」）；③ 当前布局 `metadata.status` 为 `verified` 时改为 `unverified`（`completed` 保持不变）；④ 若修正涉及 `fixed_numbers` / `covered_concepts` 的措辞，只同步这些直接派生缓存，随后刷新 `continuity.updated_at`；⑤ 若修正改动小节标题，只更新 canonical ledger 中真实指向该章的 `at` 标题：新课程修改 `_lathe/knowledge-points.md` 对应八列表格单元格里的 `at:part-NN.md#<标题>`，legacy 修改 `syllabus.json` 对应条目的 `at`；ID、状态与其他字段一律不动；⑥ 对影响面里列出的 `-review` 材料与实际面试文档，只做**同一处摘录的最小替换**，不重写、不调结构、不加新内容；⑦ 追加一条到当前布局 research 的 `## Errata`（含影响面）；⑧ 复跑自检：`ledger_check.py <COURSE_DIR>` 必须 `exit 0`，改动落在代码块内时再跑 `part_lint.py` 与 `trial_run.py`，结果写进回执 |
+| 1 确认修改 | ① 只替换确认块里的「原文」片段，不顺手改其他正文、不改 voice 和结构；② 该部分的验证状态横幅换回「未验证」模板（`lathe:verify-status` 标记块，写明「勘误于 <日期>」）；③ 当前布局 `metadata.status` 为 `verified` 时改为 `unverified`（`completed` 保持不变）；④ 若修正涉及 `fixed_numbers` / `covered_concepts` 的措辞，只同步这些直接派生缓存，随后刷新 `continuity.updated_at`；⑤ 若修正改动小节标题，只更新 canonical ledger 中真实指向该章的 `at` 标题：新课程修改 `_lathe/knowledge-points.md` 对应知识表单元格里的 `at:part-NN.md#<标题>`，legacy 修改 `syllabus.json` 对应条目的 `at`；ID、状态与其他字段一律不动；⑥ 对影响面里列出的 `-review` 材料与实际面试文档，只做**同一处摘录的最小替换**，不重写、不调结构、不加新内容；⑦ 追加一条到当前布局 research 的 `## Errata`（含影响面）；⑧ 复跑自检：`ledger_check.py <COURSE_DIR>` 必须 `exit 0`，改动落在代码块内时再跑 `part_lint.py` 与 `trial_run.py`，结果写进回执 |
 | 2 只记勘误 | 只追加一条到当前布局 research 的 `## Errata`，处理方式写「只记勘误」；不动正文、canonical ledger、横幅和 `status` |
 | 3 不处理 | 不写任何文件 |
 

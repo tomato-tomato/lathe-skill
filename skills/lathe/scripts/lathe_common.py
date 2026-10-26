@@ -20,7 +20,19 @@ PART_NO = re.compile(r"part-(\d{2})")
 POINT_SOURCES = ("user", "plan", "exercise", "deepen")
 POINT_TYPES = ("main", "foundation", "mergeable", "carry")
 POINT_STATUSES = ("planned", "queued", "taught", "self-study", "dropped_by_user", "duplicate")
-KNOWLEDGE_HEADERS = ("ID", "知识点", "来源", "类型", "计划 Part", "状态", "已讲位置 / 承诺来源", "备注")
+# 0.7.0 新表：Part 不再是知识点的归属字段；行序承担默认选点顺序。
+KNOWLEDGE_HEADERS = ("ID", "知识点", "来源", "类型", "状态", "已讲位置 / 承诺来源", "备注")
+# 0.6.1 旧表只读兼容：下一次确认迁移后写成 0.7.0 七列。
+KNOWLEDGE_HEADERS_061 = (
+    "ID",
+    "知识点",
+    "来源",
+    "类型",
+    "计划 Part",
+    "状态",
+    "已讲位置 / 承诺来源",
+    "备注",
+)
 
 
 class LayoutError(ValueError):
@@ -61,6 +73,7 @@ class KnowledgeTable:
     row_lines: List[int]
     progress_cache: Optional[Tuple[int, int, int]]
     status_cache: Optional[Dict[str, int]]
+    schema: str = "0.7"
 
 
 @dataclass
@@ -267,13 +280,17 @@ def _parse_status_cache(lines: Sequence[str]) -> Tuple[Optional[Dict[str, int]],
 
 
 def parse_knowledge_table(text: str) -> KnowledgeTable:
-    """严格解析固定八列知识表，不猜测损坏的 Markdown。"""
+    """严格解析知识表，不猜测损坏的 Markdown。
+
+    0.7.0 固定七列；同时只读兼容 0.6.1 八列（含旧 `计划 Part`）。
+    八列表会在下一次写入前由技能展示迁移对照，确认后渲染成七列。
+    """
     lines = text.splitlines()
     progress, errors = _parse_progress(lines)
     status_cache, status_errors = _parse_status_cache(lines)
     errors.extend(status_errors)
 
-    header_indexes: List[int] = []
+    header_indexes: List[Tuple[int, int]] = []
     for index, line in enumerate(lines):
         if not line.lstrip().startswith("|"):
             continue
@@ -282,11 +299,14 @@ def parse_knowledge_table(text: str) -> KnowledgeTable:
         except KnowledgeTableError:
             continue
         if cells == list(KNOWLEDGE_HEADERS):
-            header_indexes.append(index)
+            header_indexes.append((index, 7))
+        elif cells == list(KNOWLEDGE_HEADERS_061):
+            header_indexes.append((index, 8))
     if len(header_indexes) != 1:
-        errors.append("知识表必须且只能有一个固定八列表头")
+        errors.append("知识表必须且只能有一个固定表头（0.7.0 七列，或只读兼容 0.6.1 八列）")
         raise KnowledgeTableError(errors)
-    header = header_indexes[0]
+    header, columns = header_indexes[0]
+    schema = "0.7" if columns == 7 else "0.6.1"
     if header + 1 >= len(lines):
         errors.append("知识表缺少分隔行")
         raise KnowledgeTableError(errors)
@@ -295,8 +315,8 @@ def parse_knowledge_table(text: str) -> KnowledgeTable:
     except KnowledgeTableError as exc:
         errors.extend(exc.errors)
         raise KnowledgeTableError(errors)
-    if len(separator) != 8 or not all(re.fullmatch(r":?-{3,}:?", cell) for cell in separator):
-        errors.append("第 %d 行：固定八列表头后必须是 Markdown 分隔行" % (header + 2))
+    if len(separator) != columns or not all(re.fullmatch(r":?-{3,}:?", cell) for cell in separator):
+        errors.append("第 %d 行：表头后必须是 Markdown 分隔行，且列数一致" % (header + 2))
 
     points: List[Dict[str, Any]] = []
     row_lines: List[int] = []
@@ -309,26 +329,34 @@ def parse_knowledge_table(text: str) -> KnowledgeTable:
             errors.extend(exc.errors)
             index += 1
             continue
-        if len(cells) != 8:
-            errors.append("第 %d 行：知识点必须正好 8 列（单元格里的 | 写成 \\|）" % line_no)
+        if len(cells) != columns:
+            errors.append(
+                "第 %d 行：知识点必须正好 %d 列（单元格里的 | 写成 \\|）" % (line_no, columns)
+            )
             index += 1
             continue
-        pid, point_text, src, point_type, plan_cell, status, location, note = cells
-        if plan_cell in ("", "—"):
-            plan_ref = None
-        elif re.fullmatch(r"[1-9]\d*", plan_cell):
-            plan_ref = int(plan_cell)
+        if columns == 8:
+            pid, point_text, src, point_type, plan_cell, status, location, note = cells
         else:
-            errors.append("第 %d 行：计划 Part 必须是正整数或 —" % line_no)
-            plan_ref = plan_cell
+            pid, point_text, src, point_type, status, location, note = cells
+            plan_cell = "—"
+        plan_ref: Any = None
+        if plan_cell not in ("", "—"):
+            if re.fullmatch(r"[1-9]\d*", plan_cell):
+                plan_ref = int(plan_cell)
+            else:
+                errors.append("第 %d 行：计划 Part 必须是正整数或 —（0.6.1 兼容列）" % line_no)
+                plan_ref = plan_cell
         point: Dict[str, Any] = {
             "id": pid,
             "text": point_text,
             "src": src,
             "tag": point_type,
-            "plan_ref": plan_ref,
             "status": status,
         }
+        # 八列表的旧 Part 仅保留作迁移对照，0.7.0 的选点与门禁不再读取。
+        if columns == 8:
+            point["plan_ref"] = plan_ref
         if note not in ("", "—"):
             point["note"] = note
         if location == "—":
@@ -352,7 +380,7 @@ def parse_knowledge_table(text: str) -> KnowledgeTable:
             errors.append("第 %d 行：知识点数据行必须连续，一条物理行一条" % later)
     if errors:
         raise KnowledgeTableError(errors)
-    return KnowledgeTable(points, row_lines, progress, status_cache)
+    return KnowledgeTable(points, row_lines, progress, status_cache, schema)
 
 
 def parse_knowledge_points(text: str) -> List[Dict[str, Any]]:
@@ -391,7 +419,10 @@ def _point_location(point: Dict[str, Any]) -> str:
 
 
 def render_knowledge_points(points: Sequence[Dict[str, Any]]) -> str:
-    """把 canonical points 渲染成可重复生成的固定八列 Markdown。"""
+    """把 canonical points 渲染成可重复生成的 0.7.0 七列 Markdown。
+
+    0.6.1 八列表里的 `plan_ref` 会被丢弃；调用方应先向用户展示迁移对照。
+    """
     counts = point_counts(points)
     taught, total, percent = point_progress(points)
     status = " · ".join("%s %d" % (name, counts[name]) for name in POINT_STATUSES)
@@ -402,7 +433,7 @@ def render_knowledge_points(points: Sequence[Dict[str, Any]]) -> str:
         "状态：" + status,
         "",
         "| " + " | ".join(KNOWLEDGE_HEADERS) + " |",
-        "|---|---|---|---|---:|---|---|---|",
+        "|---|---|---|---|---|---|---|",
     ]
     for point in points:
         cells = (
@@ -410,7 +441,6 @@ def render_knowledge_points(points: Sequence[Dict[str, Any]]) -> str:
             point.get("text", ""),
             point.get("src", ""),
             point.get("tag", ""),
-            point.get("plan_ref") if point.get("plan_ref") is not None else "—",
             point.get("status", ""),
             _point_location(point),
             point.get("note", ""),

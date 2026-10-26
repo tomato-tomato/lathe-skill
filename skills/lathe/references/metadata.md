@@ -1,9 +1,9 @@
 ---
 name: metadata
-description: Lathe 0.6.1 metadata 完整结构、Part 级路线、continuity 可重建缓存、双布局与自愈协议
+description: Lathe 0.7.0 metadata 完整结构、Part 级叙事大纲、continuity 可重建缓存、双布局与自愈协议
 ---
 
-# metadata 规范（0.6.1 权威契约）
+# metadata 规范（0.7.0 权威契约）
 
 新课程只写 `_lathe/metadata.json`。它是课程索引与连续性缓存，不是知识点事实源；点级状态只读写 `_lathe/knowledge-points.md`。调用脚本时仍传课程根目录。
 
@@ -28,7 +28,7 @@ description: Lathe 0.6.1 metadata 完整结构、Part 级路线、continuity 可
 {
   "_warning": "⚠️ 本文件是 Lathe 课程索引；知识点事实源是同目录 knowledge-points.md。",
   "_needs_backfill": [],
-  "lathe_version": "0.6.1",
+  "lathe_version": "0.7.0",
   "slug": "<kebab-case>",
   "title": "<课程标题>",
   "topic": "<用户原始主题>",
@@ -54,7 +54,7 @@ description: Lathe 0.6.1 metadata 完整结构、Part 级路线、continuity 可
       "part": "part-NN.md"
     }
   ],
-  "part_versions": {"part-01.md": "0.6.1"},
+  "part_versions": {"part-01.md": "0.7.0"},
   "style_anchor": "<作者 id>",
   "repo": "<远程 URL 或空>",
   "repo_branch": "<分支或空>",
@@ -94,11 +94,11 @@ description: Lathe 0.6.1 metadata 完整结构、Part 级路线、continuity 可
 | `_needs_backfill` | 只列无法可靠推断且需人工补充的字段；补齐即移除 |
 | `lathe_version` | 每次写回更新为当前技能版本 |
 | `goal` | 生成时确认；收尾按它判断目标是否达成 |
-| `status` | 使用 SKILL.md 状态机；新建写 `unverified` |
+| `status` | 使用 SKILL.md 状态机；新建写 `unverified`。`completed` 允许仍有未学完的 `planned` / `queued`，但总结必须写「未学完」提示；续写会重新开放为 `unverified` |
 | `parts` | 按顺序列课程正文与复习材料文件名 |
 | `experience_level` | `beginner` / `familiar` / `experienced`；续写沿用 |
 | `topic_novelty` | `new` / `adjacent` / `familiar`；驱动写作与研究预算 |
-| `course_plan` | 2–12 个 **Part 级**路线项，只写 part、标题、目标、前置；不要塞知识点 ID 或排队项。2 Part 只用于小而完整的课程，仍须满足每 Part 的构建配额或“候选不足不凑数” |
+| `course_plan` | 2–12 个 **Part 级叙事大纲**项，只写 part、标题、目标、前置；**不绑定任何知识点**，不承载点级状态或排队项。它只是写作方向参考，可在每次选点后改写；2 项只用于小而完整的课程 |
 | `changed_interfaces` | 活跃跨 Part 接口变更，最多 8 条；规则见下节 |
 | `part_versions` | 每写一个部分记录当时 Lathe 版本；历史检查按部分降级 |
 | `style_anchor` | 生成时选定，续写沿用 |
@@ -106,7 +106,7 @@ description: Lathe 0.6.1 metadata 完整结构、Part 级路线、continuity 可
 | `continuity` | 可从正文和知识表重建的续写缓存，不是事实源 |
 | `verify_workspace` | 新课程固定 `_lathe/verify-workspace/`；不要写根目录 `.lathe-verify/` |
 
-**Part 与点分工：** `course_plan` 回答“课程按哪些 Part 推进”；`knowledge-points.md` 回答“每个点处于什么状态、讲在哪里”。路线拆分时同步调整知识表的“计划 Part”，但不在 metadata 复制点级列表或状态统计。
+**Part 与点分工：** `course_plan` 只回答“课程大致按哪些 Part 推进”，是叙事大纲；`knowledge-points.md` 回答“池里有哪些点、每个点处于什么状态、讲在哪里”。**不要把点分配给 Part，也不要在路线调整时同步所谓“计划 Part”**；两者没有外键关系。
 
 缺字段时按本文降级推断并在本次写回补齐；无法可靠推断才进入 `_needs_backfill`。不要因普通可选字段缺失中止操作。
 
@@ -203,10 +203,10 @@ python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> --continuity
 
 执行以下规则：
 
-- 生成前初始化 2–12 个 Part 级项；part-01 完成第 1 项。只有内容确实不足以拆成 3 个独立学习单元时才用 2 项，不为凑数硬拆。
-- 续写默认推进下一项；用户改方向时更新路线并说明偏离原因。
-- 容量不足需要拆 Part 时，先让用户确认，再替换被拆项并同步知识表的“计划 Part”。
-- 收尾保留已走路线；完成度由 `goal` 与知识表门禁决定，不由路线项数量单独决定。
+- 生成前初始化 2–12 个 Part 级**叙事大纲**项；part-01 不必严格“完成第 1 项”，它只是方向参考。只有内容确实不足以拆成 3 个独立学习单元时才用 2 项，不为凑数硬拆。
+- 续写按知识池现选点，选完再确定本 Part 标题/目标；如果与大纲下一项不同，更新大纲并说明偏离原因，不静默跳项。
+- 容量不足需要拆 Part 时，先让用户确认，再改写大纲项；不需要同步知识表的 Part 字段，因为不存在该字段。
+- 收尾保留已走路线；完成度由 `goal`、知识表剩余点和用户选择决定，不由路线项数量单独决定。有剩余点时允许 `completed`，但总结必须写未学完提示。
 - legacy 缺失时可从 part 标题、目标与 `next_hook` 推断；新课程不得从 `next_hook` 生成隐藏知识点。
 
 ---

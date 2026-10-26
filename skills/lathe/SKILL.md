@@ -1,6 +1,6 @@
 ---
 name: lathe
-version: 0.6.1
+version: 0.7.0
 description: 按需生成、续写、复习、验证、提问动手实践型技术教程。当用户说 /lathe 并附带主题时使用，如 "/lathe 用 Zig 构建数字合成器"；也处理续写(extend)、收尾完结(finish)、复习(review)、验证(verify)、提问(ask)、面试(interview)、标签(tag)、语气(voice)、扫描(scan)和列表(list)等教程操作。支持中文和英文关键词。
 ---
 
@@ -58,8 +58,8 @@ Lathe 管理动手实践型教程。写作质量以 `references/writing-core.md`
 | 文件 | 单一职责 | 何时读取 |
 |---|---|---|
 | [references/writing-core.md](references/writing-core.md) | 教程结构、最多 7 个构建知识点（候选不足 4 不凑数）、做/讲/知深度、地基/承接豁免、总章 ≤9、研究与自检 | 生成、续写、收尾、复习；面试仅取研究预算与事实不变量 |
-| [references/knowledge-ledger.md](references/knowledge-ledger.md) | 双布局、canonical 知识表、固定八列、六态、选点优先级、确认/回执、承诺与闸门 | 生成、续写、收尾 |
-| [references/metadata.md](references/metadata.md) | metadata、Part 级路线、continuity 缓存、双布局与自愈 | 新建或写回 metadata、解析布局、自愈 |
+| [references/knowledge-ledger.md](references/knowledge-ledger.md) | 双布局、canonical 知识表、固定七列、六态、行序与选点优先级、确认/回执、承诺、软收尾与迁移 | 生成、续写、收尾 |
+| [references/metadata.md](references/metadata.md) | metadata、Part 级叙事大纲、continuity 缓存、双布局与自愈 | 新建或写回 metadata、解析布局、自愈 |
 | [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者写法 | 只有需要理解锚点手法时 |
 
 最小加载集：
@@ -67,7 +67,7 @@ Lathe 管理动手实践型教程。写作质量以 `references/writing-core.md`
 - 生成：`generate.md` + `writing-core.md` + `knowledge-ledger.md` + `metadata.md`；非默认 voice 才读 `voice.md`；带面试 token 才读 `interview.md`。
 - 续写：`extend.md` + 上述三个共享规范；已有或请求面试文档时加 `interview.md`。
 - 收尾：先读 `extend.md` 收尾节与课程 metadata/知识事实源判门禁；通过后再读共享规范和必要正文。
-- 复习、面试、验证、提问、标签、扫描、列表按各模块声明加载；保留这些模块尚未迁移的兼容读法，不把它们反向当成 0.6.1 写入规范。
+- 复习、面试、验证、提问、标签、扫描、列表按各模块声明加载；保留这些模块尚未迁移的兼容读法，不把它们反向当成 0.7.0 写入规范。
 
 ## 风格主锚点速查
 
@@ -109,7 +109,7 @@ id 只能取以上十个。跨场景时选最强主锚点。
 
 | 布局 | 判定 | knowledge / research / verify |
 |---|---|---|
-| 0.6.1 新课程 | `<COURSE_DIR>/_lathe/metadata.json` | `_lathe/knowledge-points.md`、`_lathe/research.md`、`_lathe/verify-result.json`、`_lathe/verify-workspace/` |
+| 0.7.0 新课程 | `<COURSE_DIR>/_lathe/metadata.json` | `_lathe/knowledge-points.md`、`_lathe/research.md`、`_lathe/verify-result.json`、`_lathe/verify-workspace/` |
 | legacy 课程 | `<COURSE_DIR>/metadata.json` | `syllabus.json`、`research.md`、`verify-result.json`、`.lathe-verify/`，全部原地 |
 
 不得逐文件回退。两处 metadata 同时存在，或辅助文件跨布局混放，均列出冲突并停止写入；旧课不迁移、不创建 `_lathe/`。目录只有 part 而 metadata 缺失时按 `metadata.md` 自愈，不能当成 slug 不存在。
@@ -130,26 +130,29 @@ id 只能取以上十个。跨场景时选最强主锚点。
 
 `_warning`、`_needs_backfill`、`lathe_version`、`part_versions`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
 
-`course_plan` 固定为 2–12 个 Part 级项，不复制点级状态；2 项只用于内容确实只需两次学习 session 的小课程。`continuity` 是可重建缓存：控制性示例、固定数字、隐喻、最近已讲概念、未决线程、衔接、最近标题与更新时间；知识点状态与练习承诺只在 canonical ledger。字段缺失时按 metadata.md 推断并在写回时补齐，不能因普通缺字段中止。
+`course_plan` 固定为 2–12 个 Part 级**叙事大纲**项，不复制点级状态，也不把任何知识点绑定到某个 Part；2 项只用于内容确实只需两次学习 session 的小课程。`continuity` 是可重建缓存：控制性示例、固定数字、隐喻、最近已讲概念、未决线程、衔接、最近标题与更新时间；知识点状态与练习承诺只在 canonical ledger。字段缺失时按 metadata.md 推断并在写回时补齐，不能因普通缺字段中止。
 
 状态机：
 
 - 生成/续写后 `unverified`；验证通过为 `verified`；收尾为 `completed`。
+- **`completed` 允许仍有未学完的 `planned` / `queued`**：总结必须写「未学完」提示并按 ID 列出剩余点，之后仍可续写继续学习。
 - 完结课程再次续写时回到 `unverified`；复习不改状态。
 - 提问勘误确认修改后，`verified` 回到 `unverified`，`completed` 保持。
 
 ## 知识表速查
 
-新课程唯一知识点事实源是 `_lathe/knowledge-points.md`；固定八列且只能有一个连续表：
+新课程唯一知识点事实源是 `_lathe/knowledge-points.md`；固定七列且只能有一个连续表：
 
-`ID | 知识点 | 来源 | 类型 | 计划 Part | 状态 | 已讲位置 / 承诺来源 | 备注`
+`ID | 知识点 | 来源 | 类型 | 状态 | 已讲位置 / 承诺来源 | 备注`
 
+- **知识点不预先归属 Part**；表内行序是默认选点顺序，每次按用户需求、课程/代码进度、到期承诺与池中顺序现选。
 - 状态：`planned` / `queued` / `taught` / `self-study` / `dropped_by_user` / `duplicate`。
-- 类型：`main` / `foundation` / `mergeable` / `carry`。
+- 类型：`main` / `foundation` / `mergeable` / `carry`（写作角色，不是 Part 归属）。
 - 位置使用 `at:` / `promise:` / `dup:` / `—`；进度与六态统计是由数据行重建的显示缓存。
 - 外部导入条目可在备注写 `深度=做/讲/知`；深度影响写作标准，但不改变 `taught` 定义。
 - 每次写操作运行 `ledger_check.py <COURSE_DIR>`；脚本参数永远传课程根目录。
-- legacy 课程继续原地维护 `syllabus.json`，保持其 JSON 格式和未知字段。
+- 0.6.1 八列表只读兼容；首次写入前展示迁移对照并确认，之后写成七列。
+- legacy 课程继续原地维护 `syllabus.json`，保持其 JSON 格式和未知字段；`plan_ref` 不再参与选点。
 
 ## 验证状态横幅
 
@@ -174,4 +177,4 @@ id 只能取以上十个。跨场景时选最强主锚点。
 
 ## 版本
 
-**技能版本：v0.6.1**。写入型操作同步更新 metadata 的 `lathe_version`；每个新 part 在 `part_versions` 记录本次版本。
+**技能版本：v0.7.0**。写入型操作同步更新 metadata 的 `lathe_version`；每个新 part 在 `part_versions` 记录本次版本。

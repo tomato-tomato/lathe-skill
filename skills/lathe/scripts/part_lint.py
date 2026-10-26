@@ -142,6 +142,8 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
             warnings.append("总结部分不用教学标注（回顾自检直接用普通问题）")
         if "lathe:verify-status:start" in text:
             errors.append("总结部分不该带验证状态横幅（它永不参与验证，横幅是永不撤销的假承诺）")
+        if "未学完" in text and "续写" not in text:
+            errors.append("总结写了「未学完」，但缺少 /lathe 续写 继续学习提示")
         print("总结部分：七节" + ("齐全 ✅" if not missing else "不全 ❌"))
     if kind == "review":
         missing = [x for x in REVIEW_SECTIONS if not any(x in h for h in heads)]
@@ -230,7 +232,7 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
         chapters = heads[pre + 1:chk]
         if len(chapters) > 9:
             errors.append(f"地基 + 承接 + 构建共 {len(chapters)} 章（上限 9）")
-        # 这里只报告章节结构；4–7 构建知识点由 ledger_check --receipt 按知识表类型精确门禁。
+        # 这里只报告章节结构；构建上限由 ledger_check --receipt 检查，少于 4 由回执说明，避免池模型下误判。
         carry = [h for h in chapters if re.match(r"0[\.．、]", h)]
         print(f"章节：§0 承接 {len(carry)} · 其他教学章 {len(chapters) - len(carry)}（实写 {len(chapters)} 章）")
     runnable = sum(1 for t in types if t in ("runnable", "expected_failure"))

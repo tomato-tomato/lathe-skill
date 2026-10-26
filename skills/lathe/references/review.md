@@ -19,7 +19,7 @@
 
    | 布局 | metadata | canonical ledger | research |
    |---|---|---|---|
-   | 0.6.1 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/research.md` |
+   | 0.7.0 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/research.md` |
    | legacy 课程 | `metadata.json` | `syllabus.json` | `research.md` |
 
    两处 metadata 同时存在，或辅助文件跨布局混放，列出冲突路径并停止；不得逐文件回退、拼接、迁移或移动文件。metadata 缺失/损坏时按 `<SKILL_DIR>/references/metadata.md` 的布局线索提出自愈位置，经用户确认重建后再继续。新布局缺 `_lathe/knowledge-points.md` 是错误；legacy 缺 `syllabus.json` 时报告 `知识表：未建立` 并停止生成复习材料，因为无法从 canonical points 计算覆盖情况。不得用 metadata 或 research 的旧点级镜像兜底。
@@ -69,7 +69,7 @@
    对照 `goal` 说明当前已建立的能力，以及尚未覆盖的部分（如有）。**`goal` 缺失时不省掉本节**：开头写「本课未记录学习目标（`goal` 缺失，可在后续允许补齐 metadata 的写操作中补）」，然后按「已建立的能力 / 还没讲到的」照常写。若 `changed_interfaces` 非空，列出仍未闭合的接口变更；若 `open_threads` / 当前布局 research 归档有未决问题，列出 1-3 个最重要的。
 
    ## 还没讲到的（按 ID）
-   直接按当前布局 canonical ledger 列出所有不是 `taught` / `duplicate` 的条目，**四个未讲状态组都要出现**（`queued` 欠着的 → `planned` 按路线还没轮到的 → `self-study` 用户选择自学的 → `dropped_by_user` 用户删去的），**某一组没有条目时写「无。」，不要整组省掉**。每条保留 ID，并按知识表中的计划 Part、承诺来源/位置与备注说明「为什么没讲 / 计划何时讲」；存在 `promise:` 或 legacy 等价承诺字段时，单独标一句「这是 Part X 留下的承诺」。末尾显示 `进度：taught / (taught + planned + queued)` 的数量与百分比，并按固定顺序列出 `planned`、`queued`、`taught`、`self-study`、`dropped_by_user`、`duplicate` 六态计数及合计。**全部已讲时写「无——所有列入清单的知识点都已讲完」**，但仍保留四组、进度与六态统计。这一段不从 metadata、research 或正文重建点级清单。
+   直接按当前布局 canonical ledger 列出所有不是 `taught` / `duplicate` 的条目，**四个未讲状态组都要出现**（`queued` 欠着的 → `planned` 按池中行序还没轮到的 → `self-study` 用户选择自学的 → `dropped_by_user` 用户删去的），**某一组没有条目时写「无。」，不要整组省掉**。每条保留 ID，并按池中行序、承诺来源/位置与备注说明「为什么没讲 / 后续如何优先」；存在 `promise:` 或 legacy 等价承诺字段时，单独标一句「这是 Part X 留下的承诺」。末尾显示 `进度：taught / (taught + planned + queued)` 的数量与百分比，并按固定顺序列出 `planned`、`queued`、`taught`、`self-study`、`dropped_by_user`、`duplicate` 六态计数及合计。**全部已讲时写「无——所有列入清单的知识点都已讲完」**，但仍保留四组、进度与六态统计。这一段不从 metadata、research 或正文重建点级清单。
 
    ## 还可以继续深入的方向
    基于课程内容、`continuity.open_threads`、`next_hook`、canonical ledger 中的 `queued` / `planned` 条目以及当前布局 research 的非点级归档线索，给出 3-5 个延伸方向：

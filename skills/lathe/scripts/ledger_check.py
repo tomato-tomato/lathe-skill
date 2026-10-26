@@ -22,7 +22,6 @@ from lathe_common import (  # noqa: E402
     headings,
     load_ledger,
     load_metadata,
-    part_number,
     point_counts,
     point_progress,
     resolve_layout,
@@ -234,7 +233,10 @@ def check(
     plan = metadata.get("course_plan", []) or []
     part_versions = metadata.get("part_versions", {}) or {}
     if layout.kind == "new" and (not isinstance(plan, list) or not 2 <= len(plan) <= 12):
-        errors.append("course_plan 必须是 2–12 个 Part 级项（当前 %s 项）" % len(plan))
+        warnings.append(
+            "course_plan 建议为 2–12 个 Part 级大纲项（当前 %s 项）；它已不绑定知识点，仅作叙事参考"
+            % len(plan)
+        )
     elif layout.kind == "legacy" and isinstance(plan, list) and plan and not 2 <= len(plan) <= 12:
         warnings.append("legacy course_plan 为 %d 项，不在 2–12 的现行范围；旧课不强制迁移" % len(plan))
 
@@ -252,15 +254,7 @@ def check(
         path = root / part
         if path.is_file():
             part_heads[part] = set(headings(path.read_text(encoding="utf-8")))
-    written = {part_number(part) for part in parts if "-review" not in part}
-    teaching = [
-        part
-        for part in parts
-        if "-review" not in part
-        and (root / part).is_file()
-        and any(head.startswith("检查点") for head in headings((root / part).read_text(encoding="utf-8")))
-    ]
-    covered_items = set(range(1, len(teaching) + 1))
+    due_promises: List[tuple] = []
 
     if layout.kind == "legacy":
         document = ledger.document or {}
@@ -285,6 +279,16 @@ def check(
             errors.append("书写格式：应一行一个知识点（检测到 %d 行 / %d 条）" % (len(one_line), len(points)))
     else:
         _validate_table_cache(ledger, points, errors)
+        if ledger.table is not None and ledger.table.schema == "0.6.1":
+            old = "、".join(
+                "%s→Part %s" % (point.get("id"), point.get("plan_ref"))
+                for point in points
+                if point.get("plan_ref") is not None
+            )
+            warnings.append(
+                "检测到 0.6.1 八列知识表：下一次写入需先展示迁移对照并确认；"
+                "迁移后删除 计划 Part 列" + ("（旧值：%s）" % old if old else "")
+            )
 
     ids = [point.get("id") for point in points]
     nonempty_ids = [str(pid) for pid in ids if pid not in (None, "")]
@@ -304,7 +308,7 @@ def check(
                 errors.append("%s 缺必填字段 %s" % (tag, missing))
                 continue
         else:
-            missing = [field for field in ("id", "text", "src", "tag", "plan_ref", "status") if field not in point]
+            missing = [field for field in ("id", "text", "src", "tag", "status") if field not in point]
             if missing:
                 errors.append("%s 缺字段 %s" % (tag, missing))
                 continue
@@ -352,6 +356,8 @@ def check(
                 errors.append("%s promise 指向不在 parts 里的文件：%s" % (tag, promised))
             if layout.kind == "new" and status not in ("planned", "queued"):
                 errors.append("%s 只有 planned/queued 可使用 promise:" % tag)
+            elif status in ("planned", "queued") and str(promised) in parts:
+                due_promises.append((str(pid), str(promised)))
 
         if status == "duplicate":
             if not dup_of:
@@ -382,27 +388,6 @@ def check(
         if mastery_match and mastery_match.group(1).strip() not in ("完成", "未完成"):
             errors.append("%s 个人掌握必须是 完成 / 未完成，不得作为 taught 状态" % tag)
 
-        if status == "planned":
-            ref = point.get("plan_ref")
-            if ref is None:
-                if layout.kind == "new" or not point.get("note"):
-                    errors.append("%s planned 缺少计划 Part" % tag)
-            elif not isinstance(ref, int) or ref <= 0:
-                errors.append("%s planned 的计划 Part 必须是正整数" % tag)
-            else:
-                item = next((entry for entry in plan if entry.get("part") == ref), None)
-                if item is None and 0 < ref <= len(plan):
-                    item = plan[ref - 1]
-                if item is None:
-                    errors.append("%s planned 的计划 Part %s 在 course_plan 里不存在" % (tag, ref))
-                elif item.get("part") in covered_items and not promised:
-                    errors.append("%s 仍是 planned，但对应教学部分已写完" % tag)
-
-        if status == "planned" and promised:
-            ref = point.get("plan_ref")
-            if (isinstance(ref, int) and ref in covered_items) or metadata.get("status") == "completed":
-                errors.append("%s 已承诺未兑现：%s，计划 Part %s 已结束" % (tag, promised, ref))
-
     # duplicate 必须直接指向一个真实主条目，不能形成 duplicate 链或环。
     by_id = {str(point.get("id")): point for point in points if point.get("id")}
     for point in points:
@@ -417,6 +402,12 @@ def check(
                 "%s dup 必须直接指向 taught/planned/queued 主条目，不能指向 %s"
                 % (_point_tag(point, None), target.get("status"))
             )
+
+    if due_promises:
+        warnings.append(
+            "到期承诺 %d 条：%s；续写应优先兑现，收尾会列为剩余知识点"
+            % (len(due_promises), "、".join("%s(%s)" % item for item in due_promises))
+        )
 
     queued = {point.get("id") for point in points if point.get("status") == "queued" and point.get("id")}
     taught = {point.get("id") for point in points if point.get("status") == "taught" and point.get("id")}
@@ -444,38 +435,41 @@ def check(
     print("账本：%s（共 %d 条）" % (summary or "无条目", len(points)))
 
     if finish:
-        debt = [point.get("id") for point in points if point.get("status") == "queued"]
-        broken = [
-            point.get("id")
-            for point in points
-            if point.get("status") == "planned"
-            and point.get("promised_by")
-            and (point.get("plan_ref") in covered_items or metadata.get("status") == "completed")
-        ]
-        roadmap: Dict[Any, List[Any]] = {}
-        for point in points:
-            if point.get("status") == "planned" and point.get("id") not in broken:
-                roadmap.setdefault(point.get("plan_ref"), []).append(point.get("id"))
-        dangling_plan = [item.get("part") for item in plan if item.get("part") not in written]
-        print("收尾门禁分组：")
-        print("  A 类真欠账：queued %d %s ｜ 已承诺未兑现 %d %s" % (len(debt), debt or "—", len(broken), broken or "—"))
-        for ref in sorted(roadmap, key=lambda value: (value is None, str(value))):
-            label = "无计划 Part" if ref is None else "Part %s" % ref
-            print("  B 类未开工路线项（%s）：%s" % (label, "、".join(str(item) for item in roadmap[ref])))
-        print("  course_plan 还没有常规部分的项：%s" % (sorted(dangling_plan) or "无"))
-        if debt or broken:
-            print("  → A 类非空：收尾门禁拒绝放行")
-        elif roadmap or dangling_plan:
-            print("  → 只有 B 类：可按现状完结并保留 planned")
+        remaining = [point for point in points if point.get("status") in ("planned", "queued")]
+        remaining_ids = [str(point.get("id")) for point in remaining if point.get("id")]
+        if remaining:
+            print("收尾检查：仍有 %d 条未学知识点（允许收尾，但总结必须写提示）" % len(remaining))
+            for point in remaining:
+                print(
+                    "  - %s｜%s｜%s｜%s"
+                    % (point.get("id"), point.get("status"), point.get("tag"), point.get("text"))
+                )
+            print(
+                "必写提示：完成状态：未学完（剩余 %d 条）；未讲清单按 ID 列全；"
+                "可用 /lathe 续写 <slug> 继续学习。" % len(remaining)
+            )
+            if receipt:
+                path = root / receipt
+                if not path.is_file():
+                    errors.append("总结文件不存在：%s" % receipt)
+                else:
+                    text = path.read_text(encoding="utf-8")
+                    if "未学完" not in text:
+                        errors.append("总结缺少「未学完」提示")
+                    if "续写" not in text:
+                        errors.append("总结缺少「续写」继续学习提示")
+                    missing = [pid for pid in remaining_ids if pid not in text]
+                    if missing:
+                        errors.append("总结未讲清单缺少 ID：%s" % "、".join(missing))
         else:
-            print("  → 无缺口：门禁通过")
+            print("收尾检查：全部知识点已学完或已处置（无 planned/queued）")
         for warning in warnings:
             print("⚠️ " + warning)
         for error in errors:
             print("❌ " + error)
         if errors:
             return 1
-        return 2 if debt or broken else 0
+        return 0
 
     if receipt:
         mine = [
@@ -497,12 +491,10 @@ def check(
             point for point in mine if point.get("tag") == "carry" or point.get("depth") == "ch0"
         ]
         written_version = num_version(part_versions.get(receipt) or metadata.get("lathe_version"))
-        part_index = teaching.index(receipt) + 1 if receipt in teaching else part_number(receipt)
-        remaining = [
+        pool_remaining = [
             point
             for point in points
-            if point.get("plan_ref") == part_index
-            and point.get("status") in ("planned", "queued")
+            if point.get("status") in ("planned", "queued")
             and point.get("tag") in ("main", "mergeable")
         ]
         if written_version >= (0, 6, 1):
@@ -511,22 +503,16 @@ def check(
                     "%s 构建知识点 %d 个，超过 7 个上限（地基 %d、承接 %d 不占构建名额）"
                     % (receipt, len(build_points), len(foundation_points), len(carry_points))
                 )
-            elif len(build_points) < 4 and remaining:
-                errors.append(
-                    "%s 构建知识点只有 %d 个，但 Part %s 还有 %d 个未选构建候选：%s"
-                    % (
-                        receipt,
-                        len(build_points),
-                        part_index,
-                        len(remaining),
-                        "、".join(str(point.get("id")) for point in remaining),
-                    )
-                )
             elif len(build_points) < 4:
                 warnings.append(
-                    "%s 构建知识点只有 %d 个：候选不足 4，按“不凑数”放行"
+                    "%s 构建知识点只有 %d 个：候选不足 4 时不凑数；有候选则在回执说明未选原因"
                     % (receipt, len(build_points))
                 )
+        if pool_remaining:
+            preview = "、".join(str(point.get("id")) for point in pool_remaining[:8])
+            if len(pool_remaining) > 8:
+                preview += "…"
+            print("池中剩余构建候选：%d 条（行序前 8：%s）" % (len(pool_remaining), preview))
         depth_counts = Counter()
         for point in mine:
             match = re.search(r"(?:^|[；;]\s*)深度=([做讲知])(?:[；;]|$)", str(point.get("note") or ""))
@@ -567,9 +553,13 @@ def check(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Lathe 知识点账本对账")
     parser.add_argument("tutorial_dir")
-    parser.add_argument("--receipt", metavar="PART", help="打印该 part 的覆盖回执")
+    parser.add_argument(
+        "--receipt",
+        metavar="PART",
+        help="打印该 part 的覆盖回执；与 --finish 同用时校验总结的未学完提示",
+    )
     parser.add_argument("--legacy", action="store_true", help="按 0.6.0 之前规则检查历史正文")
-    parser.add_argument("--finish", action="store_true", help="打印收尾门禁分组")
+    parser.add_argument("--finish", action="store_true", help="列出全部剩余点；与 --receipt 同用时校验总结的未学完提示")
     parser.add_argument("--continuity", action="store_true", help="只报 continuity 索引预算")
     args = parser.parse_args()
     return check(Path(args.tutorial_dir), args.receipt, args.legacy, args.finish, args.continuity)

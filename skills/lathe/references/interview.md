@@ -33,7 +33,7 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 
 | 布局 | metadata | canonical ledger |
 |---|---|---|
-| 0.6.1 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` |
+| 0.7.0 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` |
 | legacy 课程 | `metadata.json` | `syllabus.json` |
 
 读取课程 metadata、知识点及进度时只使用当前布局对应路径。不得按单个文件是否存在逐文件 fallback，不得拼接两套布局；两处 metadata 同时存在或辅助文件混放时，列出冲突并停止写入。legacy 课程保持根目录旧布局，不迁移，也不创建 `_lathe/`。面试文档无论位于外部还是课程内，都不是 canonical ledger，不得反向成为知识点状态或课程进度来源。
@@ -55,7 +55,7 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 |------|------|----------|
 | 1 | `interview_paths[<slug>]` 存在 | `<该目录>/<slug>.md` |
 | 2 | `interview_base_path` 存在 | `<该目录>/<slug>.md` |
-| 3 | 都没有，0.6.1 新课程 | `<COURSE_DIR>/_lathe/interview.md` |
+| 3 | 都没有，0.7.0 新课程 | `<COURSE_DIR>/_lathe/interview.md` |
 | 3 | 都没有，legacy 课程 | `<COURSE_DIR>/interview.md` |
 
 前两档外部路径规则不受课程布局影响。第三档才按 metadata 位置决定：新课程放 `_lathe/`，legacy 保持课程根目录；旧课程不得为面试文档创建 `_lathe/`。**一个 slug 一个文档**；前两档文件名为 `<slug>.md`，第三档固定为 `interview.md`。
@@ -135,7 +135,7 @@ description: Lathe 面试文档——路径解析与位置确认、教学部分�
 0. 解析教程位置并按 metadata 位置整体判定布局；metadata 缺失/损坏 → 走 metadata.md「按布局自愈」，不得为 legacy 创建 `_lathe/`。
 1. 只从当前布局读取 metadata：title / goal / tools / repo / local_project_path /
    language / topic_novelty / parts / continuity.part_titles / sources。
-2. 读取当前布局 canonical ledger：新课程读 `_lathe/knowledge-points.md` 的八列表格，
+2. 读取当前布局 canonical ledger：新课程读 `_lathe/knowledge-points.md` 的七列表格，
    legacy 读根目录 `syllabus.json`；知识点状态、已讲位置与课程进度均以它为准。
 3. 计算【教学部分】集合 T（见上），并按 ledger 的 taught/at（legacy 对应状态/at）关联各 Part；
    面试文档中的分段与进度表只能表示“面试内容覆盖”，不能覆盖 ledger 状态。

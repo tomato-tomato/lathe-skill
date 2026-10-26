@@ -9,7 +9,7 @@
 - 一次只写 `<COURSE_DIR>/part-01.md`，不写多个 Part，不写 `index.md`。
 - 新课程目录中，正文只放根目录；所有辅助文件放 `<COURSE_DIR>/_lathe/`。
 - 第一部分使用**最多 7 个构建知识点，通常 4–7**；候选不足 4 时不凑数。地基与 §0 承接不占构建名额，但地基 + 承接 + 构建总章数 **≤9**。
-- 课程地图覆盖完整课程；`course_plan` 只规划 2–12 个 Part，点级状态只写 canonical 知识表。
+- 生成时建立**覆盖完整学习目标的知识点池**；`course_plan` 只写 2–12 项 Part 级叙事大纲，**不把任何点分配给 Part**，点级状态只写 canonical 知识表。
 - 用户确认写前计划前不写正文。
 
 ## 协议
@@ -19,10 +19,10 @@
 3. **检查冲突。** 在研究前检查 `<保存位置>/<slug>/` 和 `tutorial_paths[slug]`；已有课程绝不覆盖，让用户选择改 slug、改为续写或取消。
 4. **确定语言与主锚点。** 语言按 SKILL.md；主锚点从速查表选一个 id。默认 `plainspoken` 不读 voice.md。
 5. **先研究。** 按 writing-core.md 的 `topic_novelty` 预算研究主题，锁定版本并建立关键事实覆盖。
-6. **建立完整课程地图。** 根据主题、目标、研究结果和清单策略，先形成覆盖完整学习目标的知识点集合，再组织成 2–12 项 `course_plan`。只有内容确实只需两次学习 session 时才用 2 项。每个 Part 项只含 part、标题、目标、前置；知识点逐行进入 canonical 表。
-7. **选择 part-01。** 按 knowledge-ledger.md 的优先级与现有配额，从完整知识表选出 part-01：构建最多 7、通常 4–7，候选不足 4 时不凑数；地基/承接按各自额度，总章 ≤9。若导入条目备注含 `深度=做/讲/知`，保留该深度并按 writing-core.md 的三档标准写作；`知` 优先 `mergeable` 或 `foundation`，不要自动升格为完整构建章。其余点按路线保留 `planned`，属于当前 Part 却装不下的改 `queued`；不要塞进 `next_hook`。
-8. **写前确认。** 展示完整 `course_plan`、清单归一化/去重结果、part-01 选点、顺延、章数与闸门结果，等待用户确认。生成时不可用“直接写”或 `--no-confirm` 跳过。
-9. **写入新布局。** 创建 `_lathe/`，写根目录 `part-01.md`、`_lathe/metadata.json` 与 `_lathe/knowledge-points.md`；正文按 writing-core.md 结构，在 H1 后插入未验证横幅，写清结束状态、下一部分起始状态、非目标和练习承接。不得回写或预写其他 Part。
+6. **建立完整知识点池与叙事大纲。** 根据主题、目标、研究结果和清单策略，先形成覆盖完整学习目标的知识点集合，按学习依赖和推荐顺序逐行写入 canonical 表（**行序就是默认选点顺序**）。再写 2–12 项 `course_plan` 作为叙事大纲；每个大纲项只含 part、标题、目标、前置，**不写任何知识点 ID，也不把点分配到 Part**。
+7. **选择 part-01。** 按 knowledge-ledger.md 的优先级与现有配额，从**全池**选出 part-01：构建最多 7、通常 4–7，候选不足 4 时不凑数；地基/承接按各自额度，总章 ≤9。选点依据要写进计划：用户目标、读者水平、本次可交付的代码里程碑、池中行序、到期承诺。若导入条目备注含 `深度=做/讲/知`，保留该深度并按 writing-core.md 的三档标准写作；`知` 优先 `mergeable` 或 `foundation`，不要自动升格为完整构建章。其余点保持 `planned`，本次新增/承诺装不下的可改 `queued`；不要塞进 `next_hook`。
+8. **写前确认。** 展示完整 `course_plan` 叙事大纲、清单归一化/去重结果、part-01 选点与**选点依据**、未选候选及原因、章数与闸门结果，等待用户确认。生成时不可用“直接写”或 `--no-confirm` 跳过。
+9. **写入新布局。** 创建 `_lathe/`，写根目录 `part-01.md`、`_lathe/metadata.json` 与 `_lathe/knowledge-points.md`（七列）；正文按 writing-core.md 结构，在 H1 后插入未验证横幅，写清结束状态、下一部分起始状态、非目标、练习承接和未选候选。不得回写或预写其他 Part。
 10. **自检与试跑。** 文件落盘后执行 writing-core.md 的两轮自检，并运行 `part_lint.py`、`trial_run.py --run`、`ledger_check.py <COURSE_DIR> --receipt part-01.md` 和 `--continuity`。命令都传课程根目录；失败先修再交付。
 11. **登记位置。** 保存到非默认基础目录时登记 `tutorial_paths[slug]`；默认基础目录无需重复登记。
 12. **可选同步面试文档。** 仅本次含独立 `面试` / `interview` token 时，课程落盘后按 interview.md 创建 Part 1 分段；fallback 路径按 SKILL.md 的布局规则。
@@ -58,24 +58,24 @@
 
 绝不覆盖已有 part 或任一位置的 metadata。
 
-## 完整课程地图与写前确认
+## 完整知识点池与写前确认
 
-先把学习目标分解为完整知识点，再组织 Part，而不是只规划 part-01。确认消息至少包含：
+先把学习目标分解为完整知识点池，再写 Part 级叙事大纲；**不要预先决定“每个 Part 讲哪几个点”**。确认消息至少包含：
 
 ```text
-课程路线（2–12 Part）
+课程大纲（2–12 Part，仅叙事方向）
 1. <标题> — <目标>
 ...
 
 写前计划确认（part-01）
 ① 清单：自动 / 用户 / 合并；归一化与去重 …
-② 本部分讲：<ID 列表>（构建 N / 通常 4–7、最多 7；少于 4 说明候选耗尽；地基 F；承接 C；总章 T / ≤9）
-③ 顺延：<ID> → queued（预计 Part N）
-④ 后续 planned：<按 Part 分组的 ID>
-⑤ 闸门/重规划：<仅触发时>
+② 选点依据：用户目标 … ｜ 读者水平 … ｜ 可交付代码里程碑 … ｜ 池中行序 … ｜ 到期承诺 …
+③ 本部分讲：<ID 列表>（构建 N / 通常 4–7、最多 7；少于 4 说明候选耗尽；地基 F；承接 C；总章 T / ≤9）
+④ 未选候选与原因：<池中行序前几条；为什么这次不讲>
+⑤ 闸门/大纲调整：<仅触发时>
 ```
 
-确认后才创建目录和正文。用户调整地图时先同步 `course_plan` 与知识表的“计划 Part”，再进入写作。
+确认后才创建目录和正文。用户调整大纲时只改 `course_plan`，**不要**去改知识表的 Part 字段（0.7.0 已没有这个字段）；点的优先级由行序和承诺表达。
 
 ## 写入文件
 
@@ -93,11 +93,11 @@
 
 ### `_lathe/metadata.json`
 
-按 `metadata.md` 的 0.6.1 完整结构写入，不在本文件复制 schema。生成时至少确保：当前技能版本、`parts: ["part-01.md"]`、`part_versions`、2–12 项 `course_plan`、`status: "unverified"`、写作约束、来源、空或真实的接口变更，以及可从正文/知识表重建的 continuity。`verify_workspace` 使用规范规定的新布局路径；不要添加任何点级状态、ID 或练习承接镜像。
+按 `metadata.md` 的 0.7.0 完整结构写入，不在本文件复制 schema。生成时至少确保：当前技能版本、`parts: ["part-01.md"]`、`part_versions`、2–12 项 `course_plan`、`status: "unverified"`、写作约束、来源、空或真实的接口变更，以及可从正文/知识表重建的 continuity。`verify_workspace` 使用规范规定的新布局路径；不要添加任何点级状态、ID 或练习承接镜像。
 
 ### `_lathe/knowledge-points.md`
 
-使用 knowledge-ledger.md 的固定标题、进度行、六态统计和唯一连续八列表。最小示例：
+使用 knowledge-ledger.md 的固定标题、进度行、六态统计和唯一连续七列表。最小示例：
 
 ```markdown
 # 课程知识点与进度
@@ -105,13 +105,13 @@
 进度：已完成 1 / 计划内 2（50%）
 状态：planned 1 · queued 0 · taught 1 · self-study 0 · dropped_by_user 0 · duplicate 0
 
-| ID | 知识点 | 来源 | 类型 | 计划 Part | 状态 | 已讲位置 / 承诺来源 | 备注 |
-|---|---|---|---|---:|---|---|---|
-| P1-1 | 建立可运行的最小主循环 | plan | main | 1 | taught | at:part-01.md#1. 跑通主循环 | |
-| U-1 | 解释背压边界 | user | main | 2 | planned | — | 用户原文：背压什么时候发生 |
+| ID | 知识点 | 来源 | 类型 | 状态 | 已讲位置 / 承诺来源 | 备注 |
+|---|---|---|---|---|---|---|
+| P1-1 | 建立可运行的最小主循环 | plan | main | taught | at:part-01.md#1. 跑通主循环 | |
+| U-1 | 解释背压边界 | user | main | planned | — | 用户原文：背压什么时候发生 |
 ```
 
-part-01 已讲点写 `taught` + `at:`；当前项溢出写 `queued`；后续路线点写 `planned`；重复点保留为 `duplicate`。外部导入条目在备注按 knowledge-ledger.md 写结构化 `用户原文=…；深度=…；标记=…；原编号=…；个人掌握=…`，不得把完成度写成 `taught`。数据行写完后重建进度与六态缓存。
+part-01 已讲点写 `taught` + `at:`；本次装不下的点写 `queued` 或保持 `planned`；重复点保留为 `duplicate`。外部导入条目在备注按 knowledge-ledger.md 写结构化 `用户原文=…；深度=…；标记=…；原编号=…；个人掌握=…`，不得把完成度写成 `taught`。数据行写完后重建进度与六态缓存。
 
 ## 开头、结尾与练习
 

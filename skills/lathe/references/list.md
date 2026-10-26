@@ -14,7 +14,7 @@
 
    | 布局 | 判定 | metadata | canonical ledger | verify result |
    |---|---|---|---|---|
-   | 0.6.1 新课程 | 仅 `_lathe/metadata.json` 存在 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/verify-result.json` |
+   | 0.7.0 新课程 | 仅 `_lathe/metadata.json` 存在 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/verify-result.json` |
    | legacy 课程 | 仅根 `metadata.json` 存在 | `metadata.json` | `syllabus.json` | `verify-result.json` |
 
    两处 metadata 同时存在，或已判定布局后发现另一布局的辅助文件混入，标为 **⚠️ 混合布局冲突**，列出冲突路径；只报告，不跨布局回退或拼接。仅有 part 而 metadata 缺失的候选按第 6 步处理。布局正常时只读取该布局的 metadata、canonical ledger 和 verify result；新布局缺 `_lathe/knowledge-points.md` 是 **错误**，不得从 metadata 或 research 猜知识点状态；legacy 缺 `syllabus.json` 可显示 `知识表：未建立`。
@@ -60,7 +60,7 @@
 
      若该部分为 `passed` 但内容已变更（part mtime 晚于 `checked_at`），改标 `⚠️ 内容已变更，需重新验证`。
      **条目里带 `historical_steps` 时另加一句**：`其中 N 组检查点已按 changed_interfaces.supersedes 记为历史预期`（如 `part-01.md#3`）——被登记作废的检查点组是「跳过的」而不是「跑过的」，不显示出来读者会以为整部分干净通过。`fixes` 非空时附一句「验证中做过 N 处修正」。
-   - `status` 为 `completed` 的课程，在状态列显示 `⭐ completed（已完结）`。
+   - `status` 为 `completed` 的课程，在状态列显示 `⭐ completed（已完结）`；若知识表仍有 `planned` / `queued`，改为 `⭐ completed（有未学完知识点，可续写继续）`。
    - **验证中断检测：** 当前布局 verify result 的 `status` 为 `verifying` 且 `checked_at` 超过 **6 小时**前，说明上次验证中途中断。标注为 `⚠️ 验证可能中断（停留于 <checked_at>）` 并提示重新运行 `/lathe 验证 <slug>` 即可复位（增量复用会从断点继续）。
 6. **metadata 缺失的教程**单独列为一组，逐条标注 *⚠️ metadata 缺失*（附目录位置与发现的根目录 part 文件数）。只读操作不猜布局、不重建；提示运行 `/lathe 标签 <slug>` 或任一写入型操作，按 `<SKILL_DIR>/references/metadata.md` 的布局线索与自愈协议确认重建位置。**混合布局冲突另列一组**，展示冲突路径并提示先人工确认应保留的布局；本操作不移动、迁移或删除任何辅助文件。
 
@@ -87,7 +87,7 @@
    - `continuity` 存在时，用一行说明连续性摘要的新鲜度（`updated_through` 是否跟上最后一个常规部分）——落后时提醒：下次续写会先重建摘要（一次性成本）。
    - 展示活跃 `changed_interfaces` 数量、`continuity.open_threads` 数量；当前布局 research 存在时只注明“有归档”，不把其中旧的点级镜像当状态来源。
    - **知识点与进度**：从当前布局 canonical ledger 的数据行计算并显示 `进度：taught a / 计划内 d（p%）` 与 `六态：planned · queued · taught · self-study · dropped_by_user · duplicate（共 n 条）`。新布局缺 `_lathe/knowledge-points.md` 显示错误；legacy 缺 `syllabus.json` 显示 `知识表：未建立`。不得从 metadata 点级废弃字段或 research 历史小节补齐、对账或推断。
-3. **给出下一步建议**：根据状态提示可用操作（如 `unverified` → 提示可 `/lathe 验证 <slug>`；canonical ledger 有到期承诺、`queued` 或当前 `planned` → 提示可 `/lathe 续写 <slug>`；久未学习 → 提示可 `/lathe 复习 <slug>`；目标已达成 → 提示可 `/lathe 续写 收尾 <slug>` 完结；`completed` → 说明已完结，续写可重新开放）。续写优先级只引用 canonical ledger。
+3. **给出下一步建议**：根据状态提示可用操作（如 `unverified` → 提示可 `/lathe 验证 <slug>`；canonical ledger 有到期承诺、`queued` 或池中 `planned` → 提示可 `/lathe 续写 <slug>`；久未学习 → 提示可 `/lathe 复习 <slug>`；目标已达成 → 提示可 `/lathe 续写 收尾 <slug>` 完结；`completed` → 说明已完结，续写可重新开放）。续写优先级只引用 canonical ledger。
 
 ## 边界
 

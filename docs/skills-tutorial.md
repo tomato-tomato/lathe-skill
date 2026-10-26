@@ -2,7 +2,7 @@
 
 Lathe 是一套面向 LLM 编码助手的**动手实践型教程生成技能体系**。通过一个统一的 `/lathe` 命令，你可以按需生成高质量的技术教程，并逐步续写、验证、提问和管理。
 
-> 本文对应技能版本 **v0.6.1**。版本号可从三处确认：`lathe/SKILL.md` 的 frontmatter `version:` 字段、正文顶部的“技能版本”行，以及运行 `/lathe 列表` 时输出末尾的版本行；每门课程当前布局中的 `metadata.json` 也会用 `lathe_version` 记录最近一次写入所用版本。
+> 本文对应技能版本 **v0.7.0**。版本号可从三处确认：`lathe/SKILL.md` 的 frontmatter `version:` 字段、正文顶部的“技能版本”行，以及运行 `/lathe 列表` 时输出末尾的版本行；每门课程当前布局中的 `metadata.json` 也会用 `lathe_version` 记录最近一次写入所用版本。
 >
 > **v0.5.3 的新增能力：面试文档**——`/lathe 面试 <slug> [part-NN]` 可为教程生成「按 Part 分章的面试要点文档」，并可从**生成 / 复习 / 续写**三条路径产出与自动同步（详见 [/lathe 面试 — 面试文档](#lathe-面试--面试文档)）。同版还包括若干生成提速与加载精简的改动（研究分级触发、预检/自检去重、配额前置、加载精简等），**不影响已有教程**。
 >
@@ -10,14 +10,15 @@ Lathe 是一套面向 LLM 编码助手的**动手实践型教程生成技能体�
 >
 > **v0.5.4 的优化：讲透优先 + 验证/续写补强**——配额只约束知识点数量，不再限制解释长度、类比句数、标注总数或代码行数；代码块区分 `runnable` / `fragment` / `exercise` / `text` / `output` / `expected_failure`；验证支持增量/全量、改动面预检、代码块结构预检、级联失效与预期失败；续写强制核对下一部分契约与 `course_plan`，并自查旧接口签名。新增 `changed_interfaces`、`open_threads` 归档、未验证横幅与 `_needs_backfill`；单部分正文/单块过大时优先拆分，不压缩解释。**旧教程无需强制迁移**；未标记代码块仍按 `runnable` 处理，旧片段/`...` 若被验证误判，补 `fragment` 标记即可。
 >
-> **v0.6.0 的历史更新：知识点不再无声消失。** 这一版引入了六态知识点账本、写前计划确认、覆盖回执、练习承接、积压闸门和交付前脚本检查；v0.6.1 保留这些行为，并重整公开存储契约。
+> **v0.6.0 的历史更新：知识点不再无声消失。** 这一版引入了六态知识点账本、写前计划确认、覆盖回执、练习承接、积压闸门和交付前脚本检查；v0.7.0 保留这些行为，并把“点→Part 绑定”改成“知识点池 + 每次现选”。
 >
-> **v0.6.1 的更新：可编辑知识表 + 双布局。** 要点：
+> **v0.7.0 的更新：知识点池 + 每次现选。** 要点：
 >
-> - **新课程目录更清楚**：课程根目录只放 `part-*.md`；辅助文件统一放在 `_lathe/`，包括 `metadata.json`、`knowledge-points.md`，以及按需生成的 `research.md`、`verify-result.json`、`interview.md`、`verify-workspace/`。自定义 `voices/` 仍位于教程基础目录。
-> - **固定八列知识表是唯一知识点事实源**：列为 `ID | 知识点 | 来源 | 类型 | 计划 Part | 状态 | 已讲位置 / 承诺来源 | 备注`，状态固定为 `planned` / `queued` / `taught` / `self-study` / `dropped_by_user` / `duplicate`。进度按 `taught / (taught + planned + queued)` 计算，其他三态不进分母。
-> - **知识表允许用户直接编辑**：可以新增、修改或删除整行。新增行可暂留空 ID，下一次写入操作会先校验并补齐；整行删除视为主动编辑，不会静默恢复，但技能会先建议改成 `dropped_by_user` 以保留审计记录。
-> - **生成时三选一**：自动生成完整清单、使用用户清单、合并两者。续写时用户新增内容先进入知识表，再按原配额选点；硬优先级为到期承诺 → 本次用户新增 → `queued` → 当前路线的 `planned`。
+> - **知识点不再预先归属 Part**：知识表是七列池表 `ID | 知识点 | 来源 | 类型 | 状态 | 已讲位置 / 承诺来源 | 备注`；表内行序是默认选点顺序。每次生成/续写时，Lathe 根据用户需求、上次结束状态、本地代码进度、到期承诺与池中顺序，现选 4–7 个构建点。
+> - **Part 只是交付单元**：`course_plan` 改成 2–12 项叙事大纲，不把任何知识点绑定到某个 Part；Part 标题和目标在选点之后确定。
+> - **未选候选必须暴露**：写前计划与交付回执要列出池中行序靠前的未选点和原因，避免“静默跳过”。
+> - **允许未学完收尾**：`completed` 不要求所有点都是 `taught`。若仍有 `planned` / `queued`，总结必须写「完成状态：未学完」提示、按 ID 列出剩余点，并给出 `/lathe 续写` 入口；之后续写会重新开放课程，继续学剩余点。
+> - **0.6.1 八列表只读兼容**：首次写入前展示“删除 `计划 Part` 列”的迁移对照，用户确认后写成七列；legacy `syllabus.json` 原地兼容，`plan_ref` 只保留为历史字段，不再参与选点。
 > - **配额没有变化**：常规 Part 最多 7 个构建知识点，正常目标 4–7；候选确实不足 4 时不凑数。地基与承接不占构建名额，但“地基 + 承接 + 构建”总章数不超过 9。
 > - **外部清单可带深度**：备注写 `深度=做/讲/知` 表示实现、讲清或知道即可；个人“完成”勾选不会自动变成 `taught`。
 > - **旧课程原地兼容**：0.6.0 课程继续使用根目录旧辅助文件，不自动迁移、不自动转换成 Markdown，也不创建 `_lathe/`。一门课程不能混用两套布局；发现混放会列出冲突并停止写入。
@@ -53,8 +54,8 @@ Lathe 是一套面向 LLM 编码助手的**动手实践型教程生成技能体�
 从本仓库的 [GitHub Releases] 页面下载最新的 `skills` 压缩包并解压：
 
 ```bash
-# 下载并解压（以实际 release 文件名为准，如 lathe-0.6.1.zip）
-unzip lathe-0.6.1.zip -d ./skills-download
+# 下载并解压（以实际 release 文件名为准，如 lathe-0.7.0.zip）
+unzip lathe-0.7.0.zip -d ./skills-download
 ```
 
 解压后的目录结构如下：
@@ -65,7 +66,7 @@ skills-download/
     ├── SKILL.md                     ← 入口路由 + 共享配置（含版本号）
     └── references/                  ← 模块（按需加载，请勿单独移动）
         ├── writing-core.md          ← 写作核心（共享：结构/配额矩阵/标注/不变量/研究纪律）
-        ├── knowledge-ledger.md      ← 知识表（共享：八列/六态/选点/配额/兼容）
+        ├── knowledge-ledger.md      ← 知识表（共享：七列/六态/池选点/配额/兼容）
         ├── metadata.md              ← metadata 规范（共享：字段/continuity/course_plan/双布局/自愈）
         ├── style-benchmarks.md      ← 风格标杆（共享：仅生成时选定主锚点）
         ├── generate.md              ← 生成教程模块
@@ -207,7 +208,7 @@ echo '{"tutorials_base_path": "~/my-tutorials", "tutorial_paths": {}}' > ~/.lath
 |------|------|----------|
 | 1 | `interview_paths[<slug>]` 存在 | `<该目录>/<slug>.md` |
 | 2 | `interview_base_path` 存在 | `<该目录>/<slug>.md` |
-| 3 | 都没有，且为 0.6.1 新课程 | `<课程目录>/_lathe/interview.md` |
+| 3 | 都没有，且为 0.7.0 新课程 | `<课程目录>/_lathe/interview.md` |
 | 4 | 都没有，且为旧课程 | `<课程目录>/interview.md` |
 
 **一个 slug 一个文档**：外部目录使用 `<slug>.md`；课程内 fallback 使用 `interview.md`，并严格跟随当前布局。
@@ -230,7 +231,7 @@ echo '{"tutorials_base_path": "~/my-tutorials", "tutorial_paths": {}}' > ~/.lath
 
 ### 默认目录结构
 
-0.6.1 新建课程采用以下布局：
+0.7.0 新建课程采用以下布局：
 
 ```
 ~/others/lathe_tutorials/          ← 默认教程基础目录
@@ -239,7 +240,7 @@ echo '{"tutorials_base_path": "~/my-tutorials", "tutorial_paths": {}}' > ~/.lath
 │   ├── part-02.md                 ← 第二部分（由 /lathe 续写 添加）
 │   └── _lathe/                    ← 课程辅助文件
 │       ├── metadata.json          ← 教程索引
-│       ├── knowledge-points.md    ← 可编辑的固定八列知识表
+│       ├── knowledge-points.md    ← 可编辑的固定七列知识表
 │       ├── research.md            ← 按需：接口/线程归档与勘误
 │       ├── verify-result.json     ← 按需：验证结果
 │       ├── interview.md           ← 按需：未配置外部面试路径时的 fallback
@@ -317,16 +318,16 @@ AI 会通过网络搜索查阅权威来源（官方文档、论文、源代码�
 > 如果当前会话没有网络工具，AI 会提前告知，并在关键声明处标记 `[!UNVERIFIED]`。
 
 **7. 生成第一部分**
-AI 在内部完成预检（选择控制性示例、确定章节结构与 `course_plan`、校验版本-特性一致性等）后，撰写 `part-01.md`，在 H1 之后写入“未验证”状态横幅，在检查点后写“本部分结束时的文件状态”，在“接下来”中写“下一部分起始状态”，然后按**配额矩阵**执行**交付前自检**（六项讲透、代码完整性、知识点数量、练习/来源/版本/术语/一致性等）。
+AI 在内部完成预检（选择控制性示例、确定章节结构与 Part 级叙事大纲、校验版本-特性一致性等）后，撰写 `part-01.md`，在 H1 之后写入“未验证”状态横幅，在检查点后写“本部分结束时的文件状态”，在“接下来”中写“下一部分起始状态”，然后按**配额矩阵**执行**交付前自检**（六项讲透、代码完整性、知识点数量、练习/来源/版本/术语/一致性等）。
 
-> **写前计划确认（生成时总会有这一轮）：** 研究之后、动笔之前，AI 把 2–12 项 Part 级 `course_plan`、完整知识清单的归一化/去重结果、part-01 选点、顺延项和章数发给你确认；你回复「可以」或改完计划后才开始写。这一轮不能用「直接写」跳过。确认后的每个点写入 `_lathe/knowledge-points.md`：后续路线点为 `planned`，当前 Part 装不下的点为 `queued`。
+> **写前计划确认（生成时总会有这一轮）：** 研究之后、动笔之前，AI 把 2–12 项 Part 级叙事大纲、完整知识点池的归一化/去重结果、part-01 选点与选点依据、未选候选和章数发给你确认；你回复「可以」或改完计划后才开始写。这一轮不能用「直接写」跳过。确认后的每个点写入 `_lathe/knowledge-points.md`：**表内行序就是默认选点顺序**，所有未讲点先保持 `planned`，本次装不下的可标 `queued`；不写 `计划 Part`。
 
 **8. 存储教程**
 将 `part-01.md` 写在课程根目录，并创建 `_lathe/metadata.json` 与 `_lathe/knowledge-points.md`。只有保存到非默认基础目录时，才在 `~/.lathe/config.json` 的 `tutorial_paths` 中登记位置。交付开头会给出知识表路径、进度和**覆盖回执**：
 
 > 知识表：`~/others/lathe_tutorials/raft-go/_lathe/knowledge-points.md`
 > 进度：已完成 5 / 计划内 38（13%）；queued 2；下一项 Part 2「Leader 选举」
-> 覆盖回执：本部分覆盖 1a→§1 ✅ · 1b→§2 ✅ … ｜ 本次顺延 1c、1d → queued（预计 Part 2）｜ 章节完整性：计划 5 章 / 实写 5 章 ｜ 六态：planned 31 · queued 2 · taught 5 · self-study 0 · dropped_by_user 0 · duplicate 0
+> 覆盖回执：本部分覆盖 1a→§1 ✅ · 1b→§2 ✅ … ｜ 本次未选 1c、1d → queued（池中优先）｜ 章节完整性：计划 5 章 / 实写 5 章 ｜ 六态：planned 31 · queued 2 · taught 5 · self-study 0 · dropped_by_user 0 · duplicate 0
 > **教程已保存**到 `~/others/lathe_tutorials/raft-go/`。
 > 这是第一部分。要添加更多部分，调用 `/lathe 续写 raft-go`。
 > 验证是可选的：调用 `/lathe 验证 raft-go`。无论是否验证，代码都必须完整；验证只执行 `runnable` / `expected_failure` 块和检查点，跳过片段/练习/文本块。
@@ -382,12 +383,12 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 
 ### 工作流程
 
-1. **判定布局并吸收现有教程（按需读取）** — 先看 metadata 的位置：`_lathe/metadata.json` 代表 0.6.1 新布局，根目录 `metadata.json` 代表旧布局。布局一次确定后，只读写该布局的 metadata、知识表和 research；混合布局会停止。`continuity` 新鲜时，AI 只需再读最后一个常规部分和知识表中的未结行；缓存落后、你声明改过正文，或 part 的 mtime 晚于实际 metadata 超过 2 分钟时，才全文读取一次并重建。
+1. **判定布局并吸收现有教程（按需读取）** — 先看 metadata 的位置：`_lathe/metadata.json` 代表 0.7.0 新布局，根目录 `metadata.json` 代表旧布局。布局一次确定后，只读写该布局的 metadata、知识表和 research；混合布局会停止。`continuity` 新鲜时，AI 只需再读最后一个常规部分和知识表中的未结行；缓存落后、你声明改过正文，或 part 的 mtime 晚于实际 metadata 超过 2 分钟时，才全文读取一次并重建。
 
    > 旧课程没有账本时，首次写入操作会从正文与路线推断旧格式账本，先展示给你确认，再在原位置回填；不会迁移布局或修改旧 part。
 
-2. **从 metadata 与知识表取齐约束** — voice、正文语言、风格锚点（`style_anchor`）、读者水平（`experience_level`）、主题新颖度（`topic_novelty`）、Part 级课程路线（`course_plan`）、工具版本全部从当前布局 metadata 承继；具体知识点状态、排队和练习承诺只从当前布局知识表读取，**不重新询问、不漂移**
-   - **起点契约：** 写前读取最后一部分的“下一部分起始状态/本部分不覆盖”，与 `next_hook` 冲突时以正文契约为准；核对 `course_plan` 的下一个未完成项，偏离时更新并说明，不静默跳项
+2. **从 metadata 与知识表取齐约束** — voice、正文语言、风格锚点（`style_anchor`）、读者水平（`experience_level`）、主题新颖度（`topic_novelty`）、Part 级叙事大纲（`course_plan`）、工具版本全部从当前布局 metadata 承继；具体知识点状态、排队和练习承诺只从当前布局知识表读取，**不重新询问、不漂移**
+   - **起点契约：** 写前读取最后一部分的“下一部分起始状态/本部分不覆盖”，与 `next_hook` 冲突时以正文契约为准；`course_plan` 只是方向，不绑定知识点；选点后若偏离大纲，改写大纲并说明原因，不静默跳项
    - **旧签名自查：** 写前/写后对活跃 `changed_interfaces.from` 做 grep；新 `runnable` 代码不得出现旧签名，展示旧版本必须用 `fragment` 并标注
 3. **确认本地项目路径（可选）** — 如果你的教程涉及实战项目（如命令行工具、Web 应用等）：
    - **`local_project_path` 已有记录** — 只做一次轻确认（回车沿用 / 输入新路径 / 回复"跳过"），不从零询问
@@ -395,29 +396,28 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 
    > 路径会记录到当前布局 metadata 的 `local_project_path` 字段，后续续写直接复用。
 
-   **3b. 先接收用户编辑，再做写前计划确认** — 你在指令里列出的临时主题、清单或“顺便讲”内容，会先归一化并写入当前布局知识表，再参与本 Part 选点；不会藏在 metadata、research 或衔接文本里。你也可以直接编辑 `_lathe/knowledge-points.md`：新增行可暂留空 ID，下一次写入操作会先校验八列格式并补 ID；整行删除视为主动编辑，AI 会建议改成 `dropped_by_user` 保留记录，你坚持删除时会接受并在回执说明。无法判断是主动删除还是文件损坏时会停止并请你确认。
+   **3b. 先接收用户编辑，再做写前计划确认** — 你在指令里列出的临时主题、清单或“顺便讲”内容，会先归一化并写入当前布局知识表，再参与本 Part 选点；不会藏在 metadata、research 或衔接文本里。你也可以直接编辑 `_lathe/knowledge-points.md`：新增行可暂留空 ID，下一次写入操作会先校验七列格式并补 ID；整行删除视为主动编辑，AI 会建议改成 `dropped_by_user` 保留记录，你坚持删除时会接受并在回执说明。无法判断是主动删除还是文件损坏时会停止并请你确认。
 
-   有用户新增、顺延、去重、闸门、路线调整或旧课程首次回填时，AI 会把本地路径确认与计划合并成**一条消息**：
+   有用户新增、顺延、去重、闸门、大纲调整、0.6.1 八列表迁移或旧课程首次回填时，AI 会把本地路径确认与计划合并成**一条消息**：
 
    ```
    写前计划确认（part-04）
-   ① 到期承诺：E3-1
+   ① 选点依据：用户需求 … ｜ 上次结束状态 … ｜ 本地代码进度 … ｜ 到期承诺 E3-1
    ② 用户新增：3a、3b、3c
-   ③ queued：K-1、K-2
-   ④ 当前 planned：P4-1、P4-2
-   ⑤ 本部分选中：构建 7 / 4–7；地基 1；承接 1；总章 9 / ≤9
-   ⑥ 顺延、去重、闸门与路线调整：3c → queued（预计 Part 5）
+   ③ 本部分选中：构建 7 / 4–7；地基 1；承接 1；总章 9 / ≤9
+   ④ 未选候选与原因：池中行序前 5 条里，K-1、K-2 这次不讲，因为 …
+   ⑤ 顺延、去重、闸门与 course_plan 大纲调整：3c → queued（后续优先）
    回复「可以」按此执行；也可以直接改。
    ```
 
    去重只在语义完全相同时记为 `duplicate`；部分重叠改为“深化：”新条目。`queued` 默认上限 14 条，超过时给出扩 Part（默认）/降级为 `self-study` / 改为 `dropped_by_user` 三选一，后两种只能由你显式决定。常规续写可用「直接写」跳过确认消息，但入表、配额选择和闸门仍照常执行。
 
-4. **按优先级选点并研究新内容** — 构建名额池严格按：① 本 Part 到期的 `promise:` 承诺；② 本次用户新增；③ `queued`（先进先出，同 Part 预计项优先）；④ 当前 `course_plan` 项的 `planned`。`foundation` 与 `carry` 分别使用地基/承接额度，但同样受这个优先级和总章 ≤9 约束。随后只研究本 Part 新引入的内容，沿用已有事实与来源。到期承诺讲不掉时保持/转为 `queued`，保留承诺来源并在正文和回执点名“未兑现”，不得静默降级或删除。
+4. **按优先级从池中选点并研究新内容** — 先做选点会诊：用户需求、上次结束状态、本地代码进度、到期承诺、池中行序/类型/深度。构建名额池严格按：① 已到期的 `promise:` 承诺；② 本次用户新增；③ `queued`（先进先出）；④ `planned`（按表内行序）。行序是默认推荐；跳过更靠前的点必须写明原因。`foundation` 与 `carry` 分别使用地基/承接额度，但同样受这个优先级和总章 ≤9 约束。随后只研究本 Part 新引入的内容，沿用已有事实与来源。到期承诺讲不掉时保持/转为 `queued`，保留承诺来源并在正文和回执点名“未兑现”，不得静默降级或删除。
 
 5. **确定部分编号** — 自动递增（如已有 `part-01.md`，下一个是 `part-02.md`；已有复习材料时在其最大编号后递增）
 6. **写入新部分** — 在 H1 之后写入“未验证”状态横幅，然后遵循完整的教程结构，以 `> [!RECALL]` 间隔检索开头；并在 `## 接下来` 前插入 **`## 目标达成回顾`** 小节：陈述原定学习目标、已覆盖/未覆盖内容、达成结论——由你自行判断继续延伸还是收尾完结；写完执行交付前自检
-7. **更新知识表、metadata 与 continuity** — 已讲点改为 `taught` 并写真实 `at:`；未讲成的当前项改为 `queued`；后续路线点保持 `planned`；练习承诺写入同一知识表。随后更新当前布局 metadata 的 `parts`、`part_versions`、来源、Part 级 `course_plan`、接口变更和可重建的 `continuity` 缓存。`covered_concepts` 只从最近 24 个 `taught` 点重建；知识点状态、排队与练习承诺不复制到 metadata、continuity 或 research。最后把 `lathe_version` 更新为当前版本，`status` 重置为 `unverified`。
-8. **报告完成** — 结果最前面给出实际知识表路径、进度与六态统计，随后是**覆盖回执**（每个知识点讲在哪一节、哪些顺延、去重了什么、承诺是否兑现、计划章数 / 实写章数）；写前计划里的每一点都必须闭合。
+7. **更新知识表、metadata 与 continuity** — 已讲点改为 `taught` 并写真实 `at:`；未讲成的到期承诺改为 `queued`；未选候选保持 `planned`；练习承诺写入同一知识表。随后更新当前布局 metadata 的 `parts`、`part_versions`、来源、Part 级 `course_plan` 大纲（仅在选择偏离时改写）、接口变更和可重建的 `continuity` 缓存。`covered_concepts` 只从最近 24 个 `taught` 点重建；知识点状态、排队与练习承诺不复制到 metadata、continuity 或 research。最后把 `lathe_version` 更新为当前版本，`status` 重置为 `unverified`。
+8. **报告完成** — 结果最前面给出实际知识表路径、进度与六态统计，随后是**覆盖回执**（每个知识点讲在哪一节、哪些未选及原因、去重了什么、承诺是否兑现、计划章数 / 实写章数）；写前计划里的每一点都必须闭合。
 
 ### 目标达成与收尾完结
 
@@ -427,18 +427,31 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 /lathe 续写 收尾 <slug>
 ```
 
-收尾模式生成一个**总结部分**，固定七个小节：`全课程回顾`（逐部分一句话）、`知识图谱`、`目标对照`、`未讲清单（按 ID）`、`回顾自检`（3–5 个贯穿全课程的问题，**代替** `## 检查点`）、`练习方向`、`寄语`。未讲清单按账本 ID 列出所有不是 `taught` / `duplicate` 的条目（谁没讲、为什么、想学时怎么捡回）。总结部分**不写** `## 检查点`、`## 你将构建什么`、`## 前置条件`、`## 来源`、四个契约行（没有下一部分可交接，硬写就是假契约）与**验证状态横幅**（它没有 runnable、永不参与验证）。`part_lint.py --kind finish` 按这张表检查，写了横幅会直接报错。另注意：`plan_ref` / `course_plan` 的 `part` 数的是**第几个教学部分**，不含复习材料与总结部分——总结会占用一个文件名编号但不算一个教学部分，走 ④ 时末尾要写清「下次续写新建 `part-(NN+1).md`，补的是路线图第 k 项」。
+收尾模式生成一个**总结部分**，固定七个小节：`全课程回顾`（逐部分一句话）、`知识图谱`、`目标对照`、`未讲清单（按 ID）`、`回顾自检`（3–5 个贯穿全课程的问题，**代替** `## 检查点`）、`练习方向`、`寄语`。未讲清单按账本 ID 列出所有不是 `taught` / `duplicate` 的条目（谁没讲、为什么、想学时怎么捡回）。总结部分**不写** `## 检查点`、`## 你将构建什么`、`## 前置条件`、`## 来源`、四个契约行（没有下一部分可交接，硬写就是假契约）与**验证状态横幅**（它没有 runnable、永不参与验证）。`part_lint.py --kind finish` 按这张表检查，写了横幅会直接报错。
 
-收尾的第一件事就是**门禁**，而且排在读取正文之前：只读取当前布局的 metadata 与 canonical 知识表，并运行 `ledger_check.py <课程根目录> --finish`。新课程读取 `_lathe/metadata.json` 与 `_lathe/knowledge-points.md`；旧课程读取根目录旧文件。脚本直接把未结知识点分成两类：
+**允许未学完收尾**：`completed` 不再要求所有点都是 `taught`。如果账本仍有 `planned` / `queued`，总结的 H1 之后必须加：
 
-| 类别 | 是什么 | 你的选项 |
-|---|---|---|
-| **A 类真欠账** | `queued`（顺延未还）+ 已到期但未兑现的承诺 | ① 补写涉及路线的 Part；② 逐条改为 `self-study`；③ 强制完结 |
-| **B 类未开工路线项** | 其余 `planned`，即尚未推进的路线内容 | **④ 按现状完结（默认）**：保留 `planned`，总结的「未讲清单」如实列出；也可选 ① / ② / ③ |
+```markdown
+> [!WARNING]
+> **完成状态：未学完（剩余 N 条知识点）。**
+> 未讲清单见下方「未讲清单（按 ID）」。之后可以运行 `/lathe 续写 <slug>` 继续学习剩余知识点；续写会把课程重新开放为 `unverified`。
+```
 
-只有 A 类非空时才逼你三选一；A 类为空、只剩路线没走完时默认走 ④——**目标已达成但路线未走完是正常状态，不会被当成欠账**。任一情况下，**你确认之前都不读正文、不写总结、不会把 `status` 置为 `completed`**。取不到你的回复时（无人值守、批量脚本）就停在门禁、把缺口与选项原文输出即可——**这是预期行为，不是失败**，技能不会为此新增状态字段，也不会先写个草稿。此外收尾的加载顺序是「先只读 `extend.md` 的收尾节 + 教程的 metadata / 账本把门禁判完」，门禁拒绝时不会再白读约 63 KB 的共享规则文件与 180 KB 的正文。门禁通过后 `status` 标记为 `completed`，`/lathe 列表` 中显示 ⭐ 已完结。
+收尾的第一件事是**读剩余点，不拦截**：只读取当前布局的 metadata 与 canonical 知识表，运行 `ledger_check.py <课程根目录> --finish`。脚本会列出全部 `planned` / `queued` 并给出提示模板，不再按 A/B 类拒绝放行。你可以：
 
-> 完结不是永久的：之后直接 `/lathe 续写 <slug>` 即可重新开放课程（`status` 自动重置）；`/lathe 复习 <slug>` 则不会改变完结状态。
+1. 继续写一个 Part；
+2. 直接收尾，并在总结里写「未学完」提示、按 ID 列出剩余点；
+3. 把部分点明确改为 `self-study` / `dropped_by_user`（只能由你显式选择）。
+
+你确认之前不读正文、不写总结、不改 `status`。总结写入后再运行：
+
+```text
+python3 <技能目录>/scripts/ledger_check.py <课程根目录> --finish --receipt <总结文件>
+```
+
+脚本会校验「未学完」提示、全部剩余 ID 和「续写」继续学习入口；缺任何一项先补再交付。`completed` 课程在 `/lathe 列表` 中会显示「⭐ completed（有未学完知识点，可续写继续）」。
+
+> 完结不是永久的：之后直接 `/lathe 续写 <slug>` 即可重新开放课程（`status` 自动重置），剩余点继续参与选点；`/lathe 复习 <slug>` 则不会改变完结状态。
 
 ### 注意事项
 
@@ -603,7 +616,7 @@ AI 在内部完成预检（选择控制性示例、确定章节结构与 `course
 
 ### 功能
 
-在当前布局的验证工作区中像真实读者一样逐步执行教程，检查每步是否确实可用。0.6.1 新课程使用 `_lathe/verify-workspace/`；旧课程继续使用根目录 `.lathe-verify/`。工作区持久保留并增量复用。
+在当前布局的验证工作区中像真实读者一样逐步执行教程，检查每步是否确实可用。0.7.0 新课程使用 `_lathe/verify-workspace/`；旧课程继续使用根目录 `.lathe-verify/`。工作区持久保留并增量复用。
 
 ### 调用方式
 
@@ -952,12 +965,12 @@ AI 会一次性展示全部结果（不逐条询问），经你确认后才写�
 1. part-01.md — 生成第一个正弦波
 
 共 2 门语言、2 门课程、4 个部分，1 门课程尚未验证。
-技能版本：v0.6.1
+技能版本：v0.7.0
 ```
 
 > **进度与六态**只从当前布局 canonical 知识表的数据行重建：`计划内 = taught + planned + queued`，进度为 `taught / 计划内`，四舍五入到整数；`self-study`、`dropped_by_user`、`duplicate` 不进入分母。六态始终全部显示，包括 0。旧课程没有账本时显示「知识表：未建立」；新布局缺 `knowledge-points.md` 时显示明确错误，不从 metadata 或 research 猜数。
 
-**单教程详情：** 展示标题、主题、编程语言、正文语言、voice、部分列表（含逐部分验证结果）、锁定工具版本、验证结果等，并根据状态给出下一步建议。字段存在时还会展示学习目标、读者水平、风格锚点、生成版本、知识表进度与六态，以及 `continuity` 摘要的新鲜度；存在到期承诺、`queued` 或当前 `planned` 时，续写建议会优先提醒处理。
+**单教程详情：** 展示标题、主题、编程语言、正文语言、voice、部分列表（含逐部分验证结果）、锁定工具版本、验证结果等，并根据状态给出下一步建议。字段存在时还会展示学习目标、读者水平、风格锚点、生成版本、知识表进度与六态，以及 `continuity` 摘要的新鲜度；存在到期承诺、`queued` 或池中 `planned` 时，续写建议会优先提醒处理。
 
 ---
 
@@ -1108,13 +1121,13 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 
 ### `_lathe/metadata.json`
 
-0.6.1 新课程的索引文件位于 `_lathe/metadata.json`。它记录课程与 Part 级路线、验证状态和可重建 continuity 缓存，**不是知识点事实源**；点级状态只在同目录 `knowledge-points.md`。请勿删除；若误删，技能会结合布局线索与 `part-*.md` 提出重建方案并等待确认：
+0.7.0 新课程的索引文件位于 `_lathe/metadata.json`。它记录课程与 Part 级叙事大纲、验证状态和可重建 continuity 缓存，**不是知识点事实源**；点级状态只在同目录 `knowledge-points.md`。请勿删除；若误删，技能会结合布局线索与 `part-*.md` 提出重建方案并等待确认：
 
 ```json
 {
   "_warning": "⚠️ 本文件是该教程的索引文件，请勿删除。误删后 lathe 将无法识别此教程；可运行 /lathe 标签 <slug> 或任一写入型操作触发自愈重建。",
   "_needs_backfill": [],
-  "lathe_version": "0.6.1",
+  "lathe_version": "0.7.0",
   "slug": "raft-go",
   "title": "用 Go 从零实现 Raft 共识算法",
   "topic": "用 Go 构建 Raft 共识算法实现",
@@ -1123,7 +1136,7 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
   "status": "unverified",
   "tags": ["go", "distributed-systems", "consensus", "raft"],
   "parts": ["part-01.md", "part-02.md"],
-  "part_versions": {"part-01.md": "0.6.1", "part-02.md": "0.6.1"},
+  "part_versions": {"part-01.md": "0.7.0", "part-02.md": "0.7.0"},
   "language": "zh-CN",
   "experience_level": "familiar",
   "topic_novelty": "adjacent",
@@ -1182,14 +1195,14 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 | `topic`   | 用户的原始主题描述                               |
 | `goal`    | 学习目标（生成时确认；续写时目标达成评估与收尾完结的判定基准；旧教程首次续写时自动推断补上） |
 | `created` | 创建时间（ISO 8601）                          |
-| `status`  | 状态：`unverified` / `verified` / `completed`（已完结；续写会自动撤销完结） |
+| `status`  | 状态：`unverified` / `verified` / `completed`。`completed` 允许仍有未学完的 `planned`/`queued`，但总结必须写「未学完」提示；续写会自动撤销完结并重新开放 |
 | `tags`    | 标签数组（由 `/lathe 标签` 管理）                |
 | `parts`   | 已有的部分文件列表（含 `part-NN-review.md` 复习材料）  |
 | `part_versions` | 每个部分**当初是用哪个技能版本写的**。旧教程被新版续写一次后 `lathe_version` 会升级、丢掉这个信息，检查脚本靠它把新版本才有的约束对历史部分自动降级 |
 | `language` | 教程正文语言（如 `zh-CN`、`en`），续写/提问自动沿用       |
 | `experience_level` | 读者经验水平：`beginner` / `familiar` / `experienced`。驱动“概念锚定”的类比深度；**续写读取，不重新询问** |
 | `topic_novelty` | 主题新颖度：`new` / `adjacent` / `familiar`。驱动检索预算、地基章节、标注与概念锚定；**续写读取，不重新询问** |
-| `course_plan` | 课程路线图（2–12 个 Part 级项，每项 `{part, title, goal, prerequisites}`）。2 项只用于确实只需两次学习 session 的小课程；不放知识点 ID、状态或排队项，点级事实只在知识表 |
+| `course_plan` | Part 级叙事大纲（2–12 项，每项 `{part, title, goal, prerequisites}`）。**不绑定知识点**，不放知识点 ID、状态或排队项；每次选点后可改写。2 项只用于确实只需两次学习 session 的小课程 |
 | `changed_interfaces` | 跨部分活跃接口变更清单。每项 `{file, symbol, from, to, call_sites, supersedes, part}`；最多 8 条，旧项归档到 `_lathe/research.md`；无变化时为空数组 |
 | `style_anchor` | 风格标杆主锚点 id（如 `nystrom`、`sam-who`）。续写沿用，避免重复加载标杆表 |
 | `repo`    | 关联的代码仓库 URL（独立教程为空）                     |
@@ -1231,7 +1244,7 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 
 ### `_lathe/knowledge-points.md`（知识表）
 
-0.6.1 新课程把每个知识点放在一个连续的 Markdown 表中。表头与八列顺序固定：
+0.7.0 新课程把每个知识点放在一个连续的 Markdown 表中。表头与七列顺序固定；**知识点不预先归属 Part**，表内行序就是默认选点顺序：
 
 ```markdown
 # 课程知识点与进度
@@ -1239,11 +1252,11 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 进度：已完成 1 / 计划内 3（33%）
 状态：planned 1 · queued 1 · taught 1 · self-study 0 · dropped_by_user 0 · duplicate 0
 
-| ID | 知识点 | 来源 | 类型 | 计划 Part | 状态 | 已讲位置 / 承诺来源 | 备注 |
-|---|---|---|---|---:|---|---|---|
-| P1-1 | 解释事务提交边界 | plan | main | 1 | taught | at:part-01.md#1. 提交一笔事务 | |
-| E1-1 | 处理重试幂等性 | exercise | carry | 2 | planned | promise:part-01.md | 必做练习 2 |
-| U-2 | 区分锁等待与死锁 | user | main | 2 | queued | — | 用户原文：锁为什么卡住 |
+| ID | 知识点 | 来源 | 类型 | 状态 | 已讲位置 / 承诺来源 | 备注 |
+|---|---|---|---|---|---|---|
+| P1-1 | 解释事务提交边界 | plan | main | taught | at:part-01.md#1. 提交一笔事务 | |
+| E1-1 | 处理重试幂等性 | exercise | carry | planned | promise:part-01.md | 必做练习 2 |
+| U-2 | 区分锁等待与死锁 | user | main | queued | — | 用户原文：锁为什么卡住 |
 ```
 
 - **来源**：`user` / `plan` / `exercise` / `deepen`。
@@ -1253,9 +1266,9 @@ AI：已保存到 ~/others/lathe_tutorials/voices/socratic.md。
 - **外部导入备注**：`用户原文=…；深度=做/讲/知；标记=…；原编号=…；个人掌握=完成/未完成`。深度只影响写作标准；“完成”不会自动变成 `taught`。
 - **进度公式**：`计划内 = taught + planned + queued`，`进度 = taught / 计划内`，百分比四舍五入；计划内为 0 时写 0%。另外三态不进入分母。进度行与六态行都是由数据行重建的显示缓存。
 
-知识表是**用户可编辑**的。可以直接修改内容或新增 `来源=user` 的行；新增行可暂留空 ID，下一次写入操作会先校验固定八列、补齐 ID，再进行状态修改。整行删除表示主动编辑，不会通过 ID 镜像静默恢复：技能会先建议保留该行并改为 `dropped_by_user`，你坚持删除时会接受并在回执说明；无法确认是主动删除还是损坏时停止写入。
+知识表是**用户可编辑**的。可以直接修改内容或新增 `来源=user` 的行；新增行可暂留空 ID，下一次写入操作会先校验固定七列、补齐 ID，再进行状态修改。整行删除表示主动编辑，不会通过 ID 镜像静默恢复：技能会先建议保留该行并改为 `dropped_by_user`，你坚持删除时会接受并在回执说明；无法确认是主动删除还是损坏时停止写入。
 
-续写选点的硬优先级为：本 Part 到期的 `promise:` → 本次用户新增 → `queued` → 当前 `course_plan` 项的 `planned`。常规 Part 的构建点最多 7，通常 4–7；少于 4 只在候选耗尽时允许。地基和承接不占构建名额，但“地基 + 承接 + 构建”总章数不超过 9。容量不足时，当前项进入 `queued`，后续路线项保持 `planned`。
+续写选点的硬优先级为：已到期的 `promise:` → 本次用户新增 → `queued` → `planned`（按表内行序）。行序是默认推荐；跳过更靠前的点必须在写前计划写明原因，并在回执列出未选候选。常规 Part 的构建点最多 7，通常 4–7；少于 4 只在候选耗尽时允许。地基和承接不占构建名额，但“地基 + 承接 + 构建”总章数不超过 9。容量不足时，本次新增/承诺装不下转 `queued`，其他候选保持 `planned`。
 
 > **旧课程兼容：** 根目录旧 metadata 判定出的课程继续在根目录原地维护 `syllabus.json`，保持 JSON 格式和未知字段。它不会自动转换为 `_lathe/knowledge-points.md`；缺账本时仅在下一次写操作中先推断、展示并确认，再原地回填。
 
@@ -1269,7 +1282,8 @@ python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-04-review.md 
 python3 <技能目录>/scripts/part_lint.py    <教程目录>/part-05.md --kind finish         # 总结部分专用：七节齐全，且拒绝检查点/契约行/验证横幅
 python3 <技能目录>/scripts/trial_run.py    <教程目录>/part-03.md --run    # 在临时目录逐块编译/运行 runnable 与 expected_failure
 python3 <技能目录>/scripts/ledger_check.py <教程目录> --receipt part-03.md  # 账本对账 + 打印「本部分覆盖」回执行
-python3 <技能目录>/scripts/ledger_check.py <教程目录> --finish       # 收尾门禁：缺口分 A/B 类；A 类非空时 exit 2（拒绝放行，等用户选）
+python3 <技能目录>/scripts/ledger_check.py <教程目录> --finish       # 收尾检查：列出全部 planned/queued + 未学完提示模板；不拦截收尾
+python3 <技能目录>/scripts/ledger_check.py <教程目录> --finish --receipt part-05.md  # 校验总结是否写了未学完提示、全部剩余 ID 与续写入口
 python3 <技能目录>/scripts/ledger_check.py <教程目录> --continuity   # 索引预算与条数上限实测 + 点名该归档哪几条
 
 # 检查旧课程历史部分时可按脚本说明加 --legacy，将后加约束降级为提示
@@ -1370,7 +1384,7 @@ python3 <技能目录>/scripts/ledger_check.py <教程目录> --continuity   # �
 
 ### `_lathe/verify-result.json`
 
-0.6.1 新课程的验证结果位于 `_lathe/verify-result.json`；旧课程继续使用根目录旧路径。它记录整体状态和逐部分明细；经版本冲突修复后通过的部分会附 `fixes`。结果还记录 `mode` 与 `changed_interfaces_snapshot`：
+0.7.0 新课程的验证结果位于 `_lathe/verify-result.json`；旧课程继续使用根目录旧路径。它记录整体状态和逐部分明细；经版本冲突修复后通过的部分会附 `fixes`。结果还记录 `mode` 与 `changed_interfaces_snapshot`：
 
 ```json
 {
@@ -1477,7 +1491,7 @@ python3 <技能目录>/scripts/ledger_check.py <教程目录> --continuity   # �
 直接使用 `/lathe 列表`（或 `/lathe list`），教程会按编程语言分组展示，每门课程逐部分列出并附验证状态。也可以直接浏览教程基础目录（默认为 `~/others/lathe_tutorials/`），或通过标签筛选：
 
 ```bash
-# 查找 0.6.1 新课程中包含特定标签的教程
+# 查找 0.7.0 新课程中包含特定标签的教程
 grep -rl '"compilers"' ~/others/lathe_tutorials/*/_lathe/metadata.json
 ```
 

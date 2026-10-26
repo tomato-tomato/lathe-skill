@@ -39,7 +39,7 @@
 
 | 布局 | metadata | research | 验证结果 | 验证工作区 | `metadata.verify_workspace.path` |
 |---|---|---|---|---|---|
-| 0.6.1 新课程 | `_lathe/metadata.json` | `_lathe/research.md` | `_lathe/verify-result.json` | `_lathe/verify-workspace/` | `_lathe/verify-workspace/` |
+| 0.7.0 新课程 | `_lathe/metadata.json` | `_lathe/research.md` | `_lathe/verify-result.json` | `_lathe/verify-workspace/` | `_lathe/verify-workspace/` |
 | legacy 课程 | `metadata.json` | `research.md` | `verify-result.json` | `.lathe-verify/` | `.lathe-verify/` |
 
 不得按文件是否存在逐个 fallback，也不得跨布局读取或拼接结果。两处 metadata 同时存在，或 metadata 已确定布局后发现辅助文件混放，列出冲突路径并停止写入。legacy 课程所有验证文件原地读写，绝不创建 `_lathe/`。后文的 metadata、research、验证结果和验证工作区均指本表中当前布局对应的路径。
