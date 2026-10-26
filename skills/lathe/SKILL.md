@@ -34,7 +34,7 @@ Lathe 管理动手实践型教程。写作质量以 `references/writing-core.md`
 |---|---|---|
 | 生成 | 无下述操作词的主题描述 | [references/generate.md](references/generate.md) |
 | 续写 | 续写、继续、下一部分 / extend、continue、next、add、part | [references/extend.md](references/extend.md) |
-| 收尾 | 续写/extend + 收尾、完结、总结 / finish、wrap up | [references/extend.md](references/extend.md) |
+| 收尾 | 续写/extend + 收尾、完结、总结 / finish、wrap up | [references/finish.md](references/finish.md) |
 | 复习 | 复习、回顾 / review、revise、recap | [references/review.md](references/review.md) |
 | 面试 | 面试 / interview | [references/interview.md](references/interview.md) |
 | 验证 | 验证、检查、测试 / verify、check、test、validate | [references/verify.md](references/verify.md) |
@@ -57,16 +57,17 @@ Lathe 管理动手实践型教程。写作质量以 `references/writing-core.md`
 
 | 文件 | 单一职责 | 何时读取 |
 |---|---|---|
-| [references/writing-core.md](references/writing-core.md) | 教程结构、最多 7 个构建知识点（候选不足 4 不凑数）、做/讲/知深度、地基/承接豁免、总章 ≤9、研究与自检 | 生成、续写、收尾、复习；面试仅取研究预算与事实不变量 |
+| [references/writing-core.md](references/writing-core.md) | 教程结构、构建/地基/承接配额、做/讲/知深度、总章上限、研究与自检 | 生成、续写、收尾、复习；面试仅取研究预算与事实不变量 |
 | [references/knowledge-ledger.md](references/knowledge-ledger.md) | 双布局、canonical 知识表、固定七列、六态、行序与选点优先级、确认/回执、承诺、软收尾与迁移 | 生成、续写、收尾 |
 | [references/metadata.md](references/metadata.md) | metadata、Part 级叙事大纲、continuity 缓存、双布局与自愈 | 新建或写回 metadata、解析布局、自愈 |
 | [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者写法 | 只有需要理解锚点手法时 |
+| [references/finish.md](references/finish.md) | 收尾：剩余点、未学完提示、总结七节与写回 | 收尾操作；常规续写不读 |
 
 最小加载集：
 
-- 生成：`generate.md` + `writing-core.md` + `knowledge-ledger.md` + `metadata.md`；非默认 voice 才读 `voice.md`；带面试 token 才读 `interview.md`。
+- 生成：`generate.md` + `writing-core.md` + `knowledge-ledger.md` + `metadata.md` + `assets/metadata.template.json`（仅新建 metadata 时）；非默认 voice 才读 `voice.md`；带面试 token 才读 `interview.md`。
 - 续写：`extend.md` + 上述三个共享规范；已有或请求面试文档时加 `interview.md`。
-- 收尾：先读 `extend.md` 收尾节与课程 metadata/知识事实源判门禁；通过后再读共享规范和必要正文。
+- 收尾：`finish.md` + 课程 metadata/知识事实源；先读剩余点，再按需加载 `writing-core.md`、`knowledge-ledger.md` 与必要正文。常规续写不读 `finish.md`。
 - 复习、面试、验证、提问、标签、扫描、列表按各模块声明加载；保留这些模块尚未迁移的兼容读法，不把它们反向当成 0.7.0 写入规范。
 
 ## 风格主锚点速查
@@ -114,6 +115,14 @@ id 只能取以上十个。跨场景时选最强主锚点。
 
 不得逐文件回退。两处 metadata 同时存在，或辅助文件跨布局混放，均列出冲突并停止写入；旧课不迁移、不创建 `_lathe/`。目录只有 part 而 metadata 缺失时按 `metadata.md` 自愈，不能当成 slug 不存在。
 
+## 课程目录契约
+
+新课程根目录只允许 `part-NN.md` 与 `part-NN-review.md`；其他文件全部收进 `_lathe/`。
+
+`_lathe/` 允许：`metadata.json`、`knowledge-points.md`、`research.md`、`interview.md`、`verify-result.json`、`verify-workspace/`、`assets/`。越界文件用 `ledger_check.py <COURSE_DIR> --structure` 检查；默认只警告，建议移到 `_lathe/assets/` 或课程外。
+
+legacy 课程保留根目录旧布局，不自动迁移；用户明确要求整理时再迁移。
+
 ## 面试文档路径
 
 按以下顺序解析：
@@ -126,9 +135,7 @@ id 只能取以上十个。跨场景时选最强主锚点。
 
 ## metadata 速查
 
-完整契约见 `references/metadata.md`。新课程 metadata 只放 `_lathe/metadata.json`，常用字段为：
-
-`_warning`、`_needs_backfill`、`lathe_version`、`part_versions`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
+完整契约见 `references/metadata.md`。新课程 metadata 只放 `_lathe/metadata.json`。字段全集与语义见 `metadata.md` 第 2–3 节；高频字段：`slug`、`title`、`goal`、`status`、`parts`、`course_plan`、`continuity`、`style_anchor`、`tools`、`sources`、`voice`。新建时按 `<SKILL_DIR>/assets/metadata.template.json` 写入。
 
 `course_plan` 固定为 2–12 个 Part 级**叙事大纲**项，不复制点级状态，也不把任何知识点绑定到某个 Part；2 项只用于内容确实只需两次学习 session 的小课程。`continuity` 是可重建缓存：控制性示例、固定数字、隐喻、最近已讲概念、未决线程、衔接、最近标题与更新时间；知识点状态与练习承诺只在 canonical ledger。字段缺失时按 metadata.md 推断并在写回时补齐，不能因普通缺字段中止。
 

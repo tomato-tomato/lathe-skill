@@ -21,7 +21,7 @@ cp -r skills-download/lathe ~/.qoderwork/skills/
 
 然后直接给主题即可：`/lathe 用 Go 构建一个 Raft 共识算法实现`。技能会引导你确认保存位置与经验水平、锁定工具版本、研究主题、生成第一部分。
 
-已在 **QoderWork** 与 **QoderWork CN** 上实测；技能采用标准 Agent Skills 布局（`SKILL.md` + `references/` + `scripts/`），也已确认兼容 Reasonix 等支持该标准的终端 Agent（复制到 `~/.reasonix/skills/` 即可）。其他客户端需要自行验证。
+已在 **QoderWork** 与 **QoderWork CN** 上实测；技能采用标准 Agent Skills 布局（`SKILL.md` + `references/` + `assets/` + `scripts/`），也已确认兼容 Reasonix 等支持该标准的终端 Agent（复制到 `~/.reasonix/skills/` 即可）。其他客户端需要自行验证。
 
 ## Skills 功能一览
 
@@ -83,7 +83,7 @@ cp -r skills-download/lathe ~/.qoderwork/skills/
 ```
 lathe-skill/
 ├── skills/
-│   └── lathe/           ← 技能本体：SKILL.md 入口路由 + references/ 14 个模块 + scripts/ 4 个检查脚本
+│   └── lathe/           ← 技能本体：SKILL.md 入口路由 + references/ 15 个模块 + assets/ 模板 + scripts/ 4 个检查脚本
 ├── docs/
 │   └── skills-tutorial.md   ← 使用教程（随版本同步更新，约 1500 行）
 ├── LICENSE

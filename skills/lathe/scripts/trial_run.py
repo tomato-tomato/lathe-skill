@@ -12,6 +12,8 @@
   python      py_compile；--run 时用 python3 运行，20 秒超时
   bash/sh/zsh/shell/console   只做 `bash -n` 语法检查，从不执行——命令要按检查点手动在临时工程里跑
   javascript/js/node          node --check；--run 时用 node 运行
+  typescript/ts              有 tsc 时做 --noEmit --strict；--run 时优先 tsx，其次 tsc 编译后 node；
+                             两者都没有则记为「未执行」，并打印手动命令
   其他语言    记为「未执行（脚本不支持）」，按正文在临时工程里手动跑
 依赖外部 crate / 模块 / 前文代码而无法单独编译的块，记为「需拼工程」：按正文插入说明在临时目录里拼出工程再跑。
 expected_failure 块：编译或运行失败才算通过。
@@ -38,6 +40,7 @@ NEEDS_PROJECT = re.compile(
 )
 SHELL = ("bash", "sh", "zsh", "shell", "console", "shell-session")
 JS = ("javascript", "js", "node", "mjs")
+TS = ("typescript", "ts", "tsx")
 
 
 def detect_edition(part: Path) -> str:
@@ -135,6 +138,48 @@ def try_block(block: dict, work: Path, idx: int, edition: str, do_run: bool) -> 
                 return "project", first_error(out.stderr)
             return verdict(out.returncode == 0, f"运行退出码 {out.returncode}")
         return verdict(True, "语法通过")
+
+    if lang in TS:
+        src = work / f"b{idx}.ts"
+        src.write_text(body, encoding="utf-8")
+        tsc = shutil.which("tsc")
+        tsx = shutil.which("tsx")
+        if not tsc and not tsx:
+            return "skip", (
+                "本机没有 tsc/tsx；请把该块保存为 .ts 后运行："
+                "npx -y -p typescript tsc --noEmit --strict <文件> && npx -y tsx <文件>"
+            )
+        if tsc:
+            res = run([tsc, "--noEmit", "--strict", "--target", "ES2022", "--module", "commonjs", str(src)], work)
+            if res.returncode != 0:
+                return verdict(False, "类型检查失败：" + first_error(res.stderr))
+        if do_run:
+            if tsx:
+                try:
+                    out = run([tsx, str(src)], work, timeout=20)
+                except subprocess.TimeoutExpired:
+                    return verdict(False, "运行超时（20 s）")
+                if out.returncode != 0 and NEEDS_PROJECT.search(out.stderr) and not expect_fail:
+                    return "project", first_error(out.stderr)
+                return verdict(out.returncode == 0, f"运行退出码 {out.returncode}")
+            if tsc and shutil.which("node"):
+                out_dir = work / f"out{idx}"
+                out_dir.mkdir(exist_ok=True)
+                emit = run(
+                    [tsc, "--strict", "--target", "ES2022", "--module", "commonjs", "--outDir", str(out_dir), str(src)],
+                    work,
+                )
+                if emit.returncode != 0:
+                    return verdict(False, "编译失败：" + first_error(emit.stderr))
+                js = out_dir / f"b{idx}.js"
+                if not js.is_file():
+                    return "skip", "tsc 未生成可运行 JS；按正文手动跑"
+                out = run(["node", str(js)], work, timeout=20)
+                return verdict(out.returncode == 0, f"运行退出码 {out.returncode}")
+            return "skip", "类型检查通过；本机没有 tsx/node，未运行"
+        if tsc:
+            return verdict(True, "类型检查通过（未运行）")
+        return verdict(True, "tsx 可用但未做独立类型检查（未运行）")
 
     return "skip", f"脚本不支持语言 {lang or '（未写语言）'}，按正文手动跑"
 

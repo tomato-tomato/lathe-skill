@@ -18,69 +18,13 @@ description: Lathe 0.7.0 metadata 完整结构、Part 级叙事大纲、continui
 | 新课程 | `_lathe/metadata.json` | `_lathe/knowledge-points.md` | `_lathe/research.md` | `_lathe/verify-result.json` | `_lathe/verify-workspace/` |
 | 0.6.0 legacy | `metadata.json` | `syllabus.json` | `research.md` | `verify-result.json` | `.lathe-verify/` |
 
-正文 `part-*.md` 留在课程根目录。不要按文件存在与否逐个回退：判定新布局后只查 `_lathe/`，判定 legacy 后只查根目录。两处 metadata 同时存在，或辅助文件跨布局混放，均报告冲突并停止写入。旧课程始终原地兼容，不迁移、不创建 `_lathe/`。
+正文 `part-*.md` 留在课程根目录。新课程根目录只允许 `part-NN.md` / `part-NN-review.md`；辅助文件全部在 `_lathe/`，允许 `metadata.json`、`knowledge-points.md`、`research.md`、`interview.md`、`verify-result.json`、`verify-workspace/`、`assets/`。越界文件由 `ledger_check.py --structure` 警告，建议移到 `_lathe/assets/` 或课程外；legacy 保持根目录旧布局，不自动迁移。不要按文件存在与否逐个回退：判定新布局后只查 `_lathe/`，判定 legacy 后只查根目录。两处 metadata 同时存在，或辅助文件跨布局混放，均报告冲突并停止写入。旧课程始终原地兼容，不迁移、不创建 `_lathe/`。
 
 ---
 
 ## 2. 新课程完整结构
 
-```json
-{
-  "_warning": "⚠️ 本文件是 Lathe 课程索引；知识点事实源是同目录 knowledge-points.md。",
-  "_needs_backfill": [],
-  "lathe_version": "0.7.0",
-  "slug": "<kebab-case>",
-  "title": "<课程标题>",
-  "topic": "<用户原始主题>",
-  "goal": "<可评估的一句话目标>",
-  "created": "<ISO 8601>",
-  "status": "unverified",
-  "tags": ["<标签>"],
-  "parts": ["part-01.md"],
-  "language": "zh-CN",
-  "experience_level": "beginner",
-  "topic_novelty": "new",
-  "course_plan": [
-    {"part": 1, "title": "<Part 标题>", "goal": "<Part 目标>", "prerequisites": ["<前置>"]}
-  ],
-  "changed_interfaces": [
-    {
-      "file": "<路径>",
-      "symbol": "<符号>",
-      "from": "<旧契约>",
-      "to": "<新契约>",
-      "call_sites": ["<调用点>"],
-      "supersedes": ["part-01.md#3"],
-      "part": "part-NN.md"
-    }
-  ],
-  "part_versions": {"part-01.md": "0.7.0"},
-  "style_anchor": "<作者 id>",
-  "repo": "<远程 URL 或空>",
-  "repo_branch": "<分支或空>",
-  "local_project_path": "<路径或空>",
-  "tools": [{"name": "<工具>", "version": "<版本>"}],
-  "sources": ["<URL>"],
-  "voice": "plainspoken",
-  "model": "<模型名>",
-  "continuity": {
-    "controlling_example": "<控制性示例>",
-    "fixed_numbers": {"<名称>": "<值>"},
-    "metaphor": "<隐喻或空字符串>",
-    "metaphor_retired": false,
-    "covered_concepts": ["<最近讲过的概念>"],
-    "open_threads": ["<未决问题或伏笔>"],
-    "next_hook": "<一到两句衔接>",
-    "part_titles": {"part-01.md": "<一级标题>"},
-    "updated_at": "<ISO 8601>",
-    "updated_through": "part-NN.md"
-  },
-  "verify_workspace": {
-    "path": "_lathe/verify-workspace/",
-    "note": "教程验证工作区；可删除，下次验证重建。"
-  }
-}
-```
+新课程 metadata 的完整字段模板见 [`assets/metadata.template.json`](../assets/metadata.template.json)。生成时按模板写入，字段语义见第 3 节；续写只读现有 metadata，不要把模板复制进正文或知识表。
 
 不要为新课程添加任何点级状态、ID 或练习承接镜像字段。
 

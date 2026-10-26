@@ -12,7 +12,7 @@ description: Lathe 0.7.0 知识点事实源与选点流——双布局、七列�
 调用脚本时始终传**课程根目录**，不要传 `_lathe/`：
 
 ```text
-python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> [--receipt part-NN.md] [--finish] [--continuity] [--legacy]
+python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> [--receipt part-NN.md] [--finish] [--structure] [--continuity] [--legacy]
 ```
 
 脚本按 metadata 位置一次性解析布局。检测到根目录与 `_lathe/` 混放辅助文件时停止写入；不得逐文件回退或拼接两套布局。退出码非 0 先修再交付；legacy 课程缺账本时的 `exit 3` 表示下一次写操作先回填。
@@ -152,7 +152,7 @@ self-study → queued                               # 用户重新捡回
 
 ### 配额应用
 
-按 writing-core.md 的现有知识点配额决定容量：`main` / `mergeable` 使用最多 7 个构建名额；用户新增、到期承诺、`queued` 与 `planned` 只要属于这两类就进入同一名额池；`mergeable` 可同章讲两个点，但仍分别计数。正常目标是 4–7；**候选确实不足 4 时不凑数**。`foundation` 使用地基章节额度，`carry` 使用 §0 承接额度；两者不占构建名额，但都计入“地基 + 承接 + 构建 ≤9”的总章上限。
+按 writing-core.md 的配额矩阵决定容量：`main` / `mergeable` 进入同一构建名额池；`mergeable` 可同章讲两个点，但仍分别计数。`foundation` 使用地基章节额度，`carry` 使用 §0 承接额度；两者不占构建名额，但都计入总章上限。**候选确实不足 4 时不凑数。**
 
 容量不足时按硬优先级保留，其他点留在池中：本部分用户新增或到期承诺确实装不下时改为 `queued`；后续候选保持 `planned`。不要把点塞入 `next_hook`，也不要给 `course_plan` 追加点级“补：”项。
 
@@ -190,7 +190,7 @@ self-study → queued                               # 用户重新捡回
 写前计划确认（part-NN）
 ① 清单归一化与 ID：…
 ② 本次选点依据：用户需求 … ｜ 上次结束状态 … ｜ 本地代码进度 … ｜ 到期承诺 …
-③ 本部分讲：<ID 列表>（构建 N / 通常 4–7、最多 7；地基 F；承接 C；总章 T / ≤9）
+③ 本部分讲：<ID 列表>（构建 N / 配额；地基 F；承接 C；总章 T / 上限）
 ④ 未选候选与原因：<池中行序前几条；为什么这次不讲>
 ⑤ 顺延、去重、闸门与 course_plan 大纲调整：…（仅触发时）
 ```
@@ -213,7 +213,7 @@ self-study → queued                               # 用户重新捡回
 ```text
 python3 <SKILL_DIR>/scripts/part_lint.py <课程根目录>/part-NN.md
 python3 <SKILL_DIR>/scripts/trial_run.py <课程根目录>/part-NN.md --run
-python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> --receipt part-NN.md
+python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> --receipt part-NN.md --structure
 ```
 
 ---
@@ -280,7 +280,7 @@ python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> --receipt part-NN.
 5. 写前计划每一点在正文、知识表与回执闭合；未选候选与原因已写进回执；用户主动删除未被误判为普通损坏。
 6. queued 未越过闸门；模型没有自行设置 `self-study` / `dropped_by_user`。
 7. 外部导入备注的 `深度=做/讲/知` 已按 writing-core.md 执行；`个人掌握` 没有进入 `status`。
-8. 运行 `ledger_check.py <课程根目录>`；收尾再加 `--finish`（有总结文件时带 `--receipt`），continuity 预算检查用 `--continuity`。
+8. 运行 `ledger_check.py <课程根目录>`；目录契约用 `--structure`，收尾再加 `--finish`（有总结文件时带 `--receipt`），continuity 预算检查用 `--continuity`。
 
 ---
 

@@ -36,6 +36,24 @@ LEGACY_OPTIONAL = ("original", "parent", "at", "depth", "dup_of", "note", "promi
 NUM_HEAD = re.compile(r"^(\d+)[.．、]")
 PART_FILE = re.compile(r"part-\d{2}\.md")
 PART_AT = re.compile(r"(part-\d{2}\.md)#(.+)")
+NEW_PART_FILE = re.compile(r"part-\d{2}(?:-review)?\.md")
+NEW_SUPPORT = {
+    "metadata.json",
+    "knowledge-points.md",
+    "research.md",
+    "interview.md",
+    "verify-result.json",
+    "verify-workspace",
+    "assets",
+}
+LEGACY_ROOT = {
+    "metadata.json",
+    "syllabus.json",
+    "research.md",
+    "verify-result.json",
+    "interview.md",
+    ".lathe-verify",
+}
 
 
 def head_match(head: str, heads: Set[str]) -> str:
@@ -175,12 +193,49 @@ def _validate_table_cache(ledger: Any, points: List[Dict[str, Any]], errors: Lis
         errors.append("状态缓存不一致：请按真实行重建表头统计")
 
 
+def check_structure(root: Path, layout: Any, warnings: List[str]) -> None:
+    """课程目录契约：新课程根目录只放 part-*.md；辅助文件收进 _lathe/。"""
+    if layout.kind == "new":
+        for child in sorted(root.iterdir()):
+            if child.name.startswith(".") or child.name == "__pycache__":
+                continue
+            if child.name == "_lathe" and child.is_dir():
+                continue
+            if child.is_file() and NEW_PART_FILE.fullmatch(child.name):
+                continue
+            warnings.append(
+                "结构：根目录有非课程文件 %s；请移到 _lathe/assets/ 或课程外" % child.name
+            )
+        support = root / "_lathe"
+        if support.is_dir():
+            for child in sorted(support.iterdir()):
+                if child.name.startswith(".") or child.name == "__pycache__":
+                    continue
+                if child.name in NEW_SUPPORT:
+                    continue
+                warnings.append(
+                    "结构：_lathe/ 有未登记文件 %s；请移到 _lathe/assets/ 或课程外" % child.name
+                )
+    elif layout.kind == "legacy":
+        for child in sorted(root.iterdir()):
+            if child.name.startswith(".") or child.name == "__pycache__":
+                continue
+            if child.is_file() and NEW_PART_FILE.fullmatch(child.name):
+                continue
+            if child.name in LEGACY_ROOT:
+                continue
+            warnings.append(
+                "结构：legacy 根目录有额外文件 %s；旧课不自动迁移，可移到课程外" % child.name
+            )
+
+
 def check(
     root: Path,
     receipt: Optional[str],
     force_legacy: bool = False,
     finish: bool = False,
     continuity: bool = False,
+    structure: bool = False,
 ) -> int:
     errors: List[str] = []
     warnings: List[str] = []
@@ -195,6 +250,9 @@ def check(
     except LayoutNotFoundError as exc:
         print("❌ %s：先重建 metadata.json" % exc)
         return 1
+
+    if structure:
+        check_structure(root, layout, warnings)
 
     try:
         metadata = load_metadata(root)
@@ -504,8 +562,8 @@ def check(
                     % (receipt, len(build_points), len(foundation_points), len(carry_points))
                 )
             elif len(build_points) < 4:
-                warnings.append(
-                    "%s 构建知识点只有 %d 个：候选不足 4 时不凑数；有候选则在回执说明未选原因"
+                print(
+                    "ℹ️ %s 构建知识点只有 %d 个：候选不足 4 时不凑数；有候选请在回执说明未选原因"
                     % (receipt, len(build_points))
                 )
         if pool_remaining:
@@ -561,8 +619,20 @@ def main() -> int:
     parser.add_argument("--legacy", action="store_true", help="按 0.6.0 之前规则检查历史正文")
     parser.add_argument("--finish", action="store_true", help="列出全部剩余点；与 --receipt 同用时校验总结的未学完提示")
     parser.add_argument("--continuity", action="store_true", help="只报 continuity 索引预算")
+    parser.add_argument(
+        "--structure",
+        action="store_true",
+        help="检查课程目录契约：新课程根目录只放 part-*.md，其余进 _lathe/",
+    )
     args = parser.parse_args()
-    return check(Path(args.tutorial_dir), args.receipt, args.legacy, args.finish, args.continuity)
+    return check(
+        Path(args.tutorial_dir),
+        args.receipt,
+        args.legacy,
+        args.finish,
+        args.continuity,
+        args.structure,
+    )
 
 
 if __name__ == "__main__":
