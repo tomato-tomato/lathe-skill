@@ -52,6 +52,12 @@ FINISH_SECTIONS = ("全课程回顾", "知识图谱", "目标对照", "未讲清
 FORBIDDEN_IN_FINISH = ("检查点", "你将构建什么", "前置条件", "来源")
 CONTRACT_LINES = ("本部分结束时的文件状态", "下一部分起始状态", "本部分不覆盖", "练习承接")
 ELLIPSIS = re.compile(r"^\s*(?://|#|--)?\s*(?:\.\.\.|…)\s*$", re.MULTILINE)
+SECTION_PREFIX = re.compile(r"^\d+[.．、]\s*")
+
+
+def normalize_heading(head: str) -> str:
+    """去掉章节编号，保留标题文字；用于“10. 检查点”这类编号标题。"""
+    return SECTION_PREFIX.sub("", head).strip()
 
 
 def write_version(path: Path) -> str:
@@ -90,8 +96,10 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
         notes.append("已按 --legacy 运行：0.6.0 新增的约束降级为提示（检查历史部分时使用）")
     elif legacy:
         notes.append(f"该部分由 v{write_version(path) or '未知（≤0.5.x）'} 写成，0.6.0 新增约束按历史部分降级为 ℹ️")
+    normalized = [normalize_heading(h) for h in heads]
     if kind == "auto":
-        kind = "review" if "-review" in path.name else ("regular" if "检查点" in heads else "finish")
+        has_checkpoint = any(h.startswith("检查点") for h in normalized)
+        kind = "review" if "-review" in path.name else ("regular" if has_checkpoint else "finish")
     if kind == "finish":
         notes.append("按总结部分（finish）结构检查：七节齐全、不含检查点/契约行/横幅")
     number = part_number(path.name)
@@ -102,10 +110,10 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
         warnings.append("缺少验证状态横幅（新写的 part 必须在 H1 后插入未验证横幅）")
 
     if kind == "regular":
-        missing = [s for s in REGULAR_SECTIONS if not any(h.startswith(s) for h in heads)]
+        missing = [s for s in REGULAR_SECTIONS if not any(h.startswith(s) for h in normalized)]
         if missing:
             errors.append(f"缺少小节：{missing}")
-        order = [next((i for i, h in enumerate(heads) if h.startswith(s)), None) for s in REGULAR_SECTIONS]
+        order = [next((i for i, h in enumerate(normalized) if h.startswith(s)), None) for s in REGULAR_SECTIONS]
         present = [o for o in order if o is not None]
         if present != sorted(present):
             errors.append("小节顺序不对：应为 你将构建什么 → 前置条件 → …构建章… → 检查点 → 接下来 → 练习 → 来源")
@@ -115,24 +123,24 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
         if number >= 2:
             if "[!RECALL]" not in text:
                 errors.append("续写部分（part-02 起）顶部需要 > [!RECALL]")
-            gi = next((i for i, h in enumerate(heads) if h.startswith("目标达成回顾")), None)
-            ni = next((i for i, h in enumerate(heads) if h.startswith("接下来")), None)
+            gi = next((i for i, h in enumerate(normalized) if h.startswith("目标达成回顾")), None)
+            ni = next((i for i, h in enumerate(normalized) if h.startswith("接下来")), None)
             if gi is None:
                 errors.append("续写部分缺少 ## 目标达成回顾")
             elif ni is not None and gi > ni:
                 errors.append("## 目标达成回顾 必须在 ## 接下来 之前")
         carry = [i for i, h in enumerate(heads) if re.match(r"0[\.．、]", h)]
-        pre = next((i for i, h in enumerate(heads) if h.startswith("前置条件")), None)
+        pre = next((i for i, h in enumerate(normalized) if h.startswith("前置条件")), None)
         if carry and pre is not None and carry[0] != pre + 1:
             errors.append("§0 承接/地基章必须紧跟 ## 前置条件，放在第一个构建章之前")
         if text.count("[!PREDICT]") == 0:
             warnings.append("检查点前没有 > [!PREDICT]")
 
     if kind == "finish":
-        missing = [x for x in FINISH_SECTIONS if not any(x in h for h in heads)]
+        missing = [x for x in FINISH_SECTIONS if not any(x in h for h in normalized)]
         if missing:
             errors.append(f"总结部分缺少小节：{missing}")
-        extra = [h for h in heads if any(h.startswith(x) for x in FORBIDDEN_IN_FINISH)]
+        extra = [h for h in normalized if any(h.startswith(x) for x in FORBIDDEN_IN_FINISH)]
         if extra:
             errors.append(f"总结部分不该有这些小节：{extra}")
         faked = [x for x in CONTRACT_LINES if f"**{x}" in text]
@@ -146,10 +154,10 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
             errors.append("总结写了「未学完」，但缺少 /lathe 续写 继续学习提示")
         print("总结部分：七节" + ("齐全 ✅" if not missing else "不全 ❌"))
     if kind == "review":
-        missing = [x for x in REVIEW_SECTIONS if not any(x in h for h in heads)]
+        missing = [x for x in REVIEW_SECTIONS if not any(x in h for h in normalized)]
         if missing:
             errors.append(f"复习材料缺少小节：{missing}")
-        seq = [h for h in heads if any(x in h for x in REVIEW_SECTIONS)]
+        seq = [h for h in normalized if any(x in h for x in REVIEW_SECTIONS)]
         rank = [min(REVIEW_SECTIONS.index(x) for x in REVIEW_SECTIONS if x in h) for h in seq]
         if rank != sorted(rank):
             errors.append("复习材料小节顺序不对：" + " → ".join(seq))
@@ -227,8 +235,8 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
         notes.append(f"正文约 {cjk} 个中文字符（超过约 10,000 的观察值）——只看里程碑/改动面是否该拆部分，篇幅长不是缺陷，不得压缩解释")
 
     if kind == "regular":
-        pre = next((i for i, h in enumerate(heads) if h.startswith("前置条件")), -1)
-        chk = next((i for i, h in enumerate(heads) if h.startswith("检查点")), len(heads))
+        pre = next((i for i, h in enumerate(normalized) if h.startswith("前置条件")), -1)
+        chk = next((i for i, h in enumerate(normalized) if h.startswith("检查点")), len(heads))
         chapters = heads[pre + 1:chk]
         if len(chapters) > 9:
             errors.append(f"地基 + 承接 + 构建共 {len(chapters)} 章（上限 9）")

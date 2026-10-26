@@ -557,13 +557,15 @@ def part_number(name: str) -> int:
 
 
 def section(text: str, title_prefix: str) -> str:
-    """取某个 ``## `` 小节正文。"""
+    """取某个 ``## `` 小节正文；兼容 ``## 12. 练习`` 这类编号标题。"""
     lines = text.splitlines()
     start = None
     for index, line in enumerate(lines):
-        if line.startswith("## ") and line[3:].strip().startswith(title_prefix):
-            start = index + 1
-            continue
+        if line.startswith("## "):
+            heading = re.sub(r"^\d+[.．、]\s*", "", line[3:].strip())
+            if heading.startswith(title_prefix):
+                start = index + 1
+                continue
         if start is not None and line.startswith("## "):
             return "\n".join(lines[start:index])
     return "\n".join(lines[start:]) if start is not None else ""
