@@ -57,7 +57,7 @@ Lathe 管理动手实践型教程。写作质量以 `references/writing-core.md`
 
 | 文件 | 单一职责 | 何时读取 |
 |---|---|---|
-| [references/writing-core.md](references/writing-core.md) | 教程结构、4–7 构建配额、地基/承接豁免、总章 ≤9、研究与自检 | 生成、续写、收尾、复习；面试仅取研究预算与事实不变量 |
+| [references/writing-core.md](references/writing-core.md) | 教程结构、最多 7 个构建知识点（候选不足 4 不凑数）、做/讲/知深度、地基/承接豁免、总章 ≤9、研究与自检 | 生成、续写、收尾、复习；面试仅取研究预算与事实不变量 |
 | [references/knowledge-ledger.md](references/knowledge-ledger.md) | 双布局、canonical 知识表、固定八列、六态、选点优先级、确认/回执、承诺与闸门 | 生成、续写、收尾 |
 | [references/metadata.md](references/metadata.md) | metadata、Part 级路线、continuity 缓存、双布局与自愈 | 新建或写回 metadata、解析布局、自愈 |
 | [references/style-benchmarks.md](references/style-benchmarks.md) | 标杆作者写法 | 只有需要理解锚点手法时 |
@@ -130,7 +130,7 @@ id 只能取以上十个。跨场景时选最强主锚点。
 
 `_warning`、`_needs_backfill`、`lathe_version`、`part_versions`、`slug`、`title`、`topic`、`goal`、`created`、`status`、`tags`、`parts`、`language`、`experience_level`、`topic_novelty`、`course_plan`、`changed_interfaces`、`style_anchor`、`repo`、`repo_branch`、`local_project_path`、`tools`、`sources`、`voice`、`model`、`continuity`、`verify_workspace`
 
-`course_plan` 固定为 3–12 个 Part 级项，不复制点级状态。`continuity` 是可重建缓存：控制性示例、固定数字、隐喻、最近已讲概念、未决线程、衔接、最近标题与更新时间；知识点状态与练习承诺只在 canonical ledger。字段缺失时按 metadata.md 推断并在写回时补齐，不能因普通缺字段中止。
+`course_plan` 固定为 2–12 个 Part 级项，不复制点级状态；2 项只用于内容确实只需两次学习 session 的小课程。`continuity` 是可重建缓存：控制性示例、固定数字、隐喻、最近已讲概念、未决线程、衔接、最近标题与更新时间；知识点状态与练习承诺只在 canonical ledger。字段缺失时按 metadata.md 推断并在写回时补齐，不能因普通缺字段中止。
 
 状态机：
 
@@ -147,6 +147,7 @@ id 只能取以上十个。跨场景时选最强主锚点。
 - 状态：`planned` / `queued` / `taught` / `self-study` / `dropped_by_user` / `duplicate`。
 - 类型：`main` / `foundation` / `mergeable` / `carry`。
 - 位置使用 `at:` / `promise:` / `dup:` / `—`；进度与六态统计是由数据行重建的显示缓存。
+- 外部导入条目可在备注写 `深度=做/讲/知`；深度影响写作标准，但不改变 `taught` 定义。
 - 每次写操作运行 `ledger_check.py <COURSE_DIR>`；脚本参数永远传课程根目录。
 - legacy 课程继续原地维护 `syllabus.json`，保持其 JSON 格式和未知字段。
 

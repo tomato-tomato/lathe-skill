@@ -72,6 +72,20 @@ python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> [--receipt part-NN
 - `duplicate`：必须写 `dup:<主条目 ID>` 或 `dup:part-NN.md#<标题>`。
 - `self-study` / `dropped_by_user`：备注必须写明用户选择、时间或原因；模型不得自行设置。
 
+### 外部清单的结构化备注
+
+从用户已有计划表导入时，`备注` 统一写成一行结构化文本；普通手工条目不强制：
+
+```text
+用户原文=<完整原文>；深度=做|讲|知；标记=<原/调/新…>；原编号=<n>；个人掌握=完成|未完成
+```
+
+- `深度` 是写作指令，不是状态或类型：`做/讲/知` 的完成标准见 writing-core.md「外部清单深度」。
+- `个人掌握` 只供导入报告和人工核对；**绝不据此写 `taught`**，`taught` 仍只由真实 `at:` 证明。
+- `原编号` 是外部计划编号，不是 Lathe ID；ID 另按全课程唯一规则分配。
+- `深度=` 出现在备注时，`ledger_check.py` 会校验枚举；含 `原编号=` 却缺少深度，或把个人掌握写进状态，均由检查器报错。
+- 普通用户清单仍可用自然语言备注，不要为了通过检查伪装成外部导入格式。
+
 ### 六态与编辑
 
 按以下流转：
@@ -132,7 +146,7 @@ self-study → queued                               # 用户重新捡回
 
 ### 配额应用
 
-按 writing-core.md 的现有知识点配额决定容量：`main` / `mergeable` 使用 4–7 个构建名额，用户新增、到期承诺、`queued` 与当前 `planned` 只要属于这两类就进入同一名额池；`mergeable` 可同章讲两个点，但仍分别计数。`foundation` 使用地基章节额度，`carry` 使用 §0 承接额度；两者不占构建名额，但都计入“地基 + 承接 + 构建 ≤9”的总章上限。
+按 writing-core.md 的现有知识点配额决定容量：`main` / `mergeable` 使用最多 7 个构建名额，用户新增、到期承诺、`queued` 与当前 `planned` 只要属于这两类就进入同一名额池；`mergeable` 可同章讲两个点，但仍分别计数。正常目标是 4–7；**候选确实不足 4 时按“不凑数”允许少于 4，只要该 Part 还有未选构建候选就不得少选**。`foundation` 使用地基章节额度，`carry` 使用 §0 承接额度；两者不占构建名额，但都计入“地基 + 承接 + 构建 ≤9”的总章上限。
 
 容量不足时按硬优先级保留，其他点改为 `queued` 或保留后续 Part 的 `planned`。地基或承接额度不足时，超出的点转入构建名额；构建名额也满则排队。不要把点塞入 `next_hook`，也不要给 `course_plan` 追加点级“补：”项。
 
@@ -236,4 +250,5 @@ python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> --receipt part-NN.
 4. 到期承诺先于用户新增，其后才是 queued 与当前 planned；构建、地基与承接分别使用 writing-core.md 的对应额度。
 5. 写前计划每一点在正文、知识表与回执闭合；用户主动删除未被误判为普通损坏。
 6. queued 未越过闸门；模型没有自行设置 `self-study` / `dropped_by_user`。
-7. 运行 `ledger_check.py <课程根目录>`；收尾再加 `--finish`，continuity 预算检查用 `--continuity`。
+7. 外部导入备注的 `深度=做/讲/知` 已按 writing-core.md 执行；`个人掌握` 没有进入 `status`。
+8. 运行 `ledger_check.py <课程根目录>`；收尾再加 `--finish`，continuity 预算检查用 `--continuity`。

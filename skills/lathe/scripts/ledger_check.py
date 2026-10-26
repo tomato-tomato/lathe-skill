@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -232,6 +233,10 @@ def check(
         return 1
     plan = metadata.get("course_plan", []) or []
     part_versions = metadata.get("part_versions", {}) or {}
+    if layout.kind == "new" and (not isinstance(plan, list) or not 2 <= len(plan) <= 12):
+        errors.append("course_plan 必须是 2–12 个 Part 级项（当前 %s 项）" % len(plan))
+    elif layout.kind == "legacy" and isinstance(plan, list) and plan and not 2 <= len(plan) <= 12:
+        warnings.append("legacy course_plan 为 %d 项，不在 2–12 的现行范围；旧课不强制迁移" % len(plan))
 
     def part_legacy(name: str) -> bool:
         if force_legacy:
@@ -322,8 +327,10 @@ def check(
                     warnings.append("%s 可选字段 %s 为空，应整个省略" % (tag, field))
             if point.get("src") == "user" and not point.get("original"):
                 errors.append("%s 用户条目没有逐字保留 original" % tag)
-        elif point.get("src") == "user" and "用户原文：" not in str(point.get("note") or ""):
-            errors.append("%s 用户条目的备注必须逐字保留「用户原文：…」" % tag)
+        elif point.get("src") == "user" and not any(
+            marker in str(point.get("note") or "") for marker in ("用户原文：", "用户原文=")
+        ):
+            errors.append("%s 用户条目的备注必须逐字保留「用户原文：…」或「用户原文=…」" % tag)
 
         at = point.get("at")
         promised = point.get("promised_by")
@@ -362,6 +369,18 @@ def check(
 
         if status in ("self-study", "dropped_by_user") and not str(point.get("note") or "").strip():
             errors.append("%s %s 缺少备注原因" % (tag, status))
+
+        note_text = str(point.get("note") or "")
+        depth_match = re.search(r"(?:^|[；;]\s*)深度=([^；;]+)", note_text)
+        if depth_match:
+            value = depth_match.group(1).strip()
+            if value not in ("做", "讲", "知"):
+                errors.append("%s 备注中的深度必须是 深度=做 / 深度=讲 / 深度=知，当前 %r" % (tag, value))
+        elif "原编号=" in note_text:
+            errors.append("%s 外部导入条目缺少 深度=做/讲/知" % tag)
+        mastery_match = re.search(r"(?:^|[；;]\s*)个人掌握=([^；;]+)", note_text)
+        if mastery_match and mastery_match.group(1).strip() not in ("完成", "未完成"):
+            errors.append("%s 个人掌握必须是 完成 / 未完成，不得作为 taught 状态" % tag)
 
         if status == "planned":
             ref = point.get("plan_ref")
@@ -478,11 +497,41 @@ def check(
             point for point in mine if point.get("tag") == "carry" or point.get("depth") == "ch0"
         ]
         written_version = num_version(part_versions.get(receipt) or metadata.get("lathe_version"))
-        if written_version >= (0, 6, 1) and not 4 <= len(build_points) <= 7:
-            errors.append(
-                "%s 构建知识点 %d 个，不在 4–7 配额内（地基 %d、承接 %d 不占构建名额）"
-                % (receipt, len(build_points), len(foundation_points), len(carry_points))
-            )
+        part_index = teaching.index(receipt) + 1 if receipt in teaching else part_number(receipt)
+        remaining = [
+            point
+            for point in points
+            if point.get("plan_ref") == part_index
+            and point.get("status") in ("planned", "queued")
+            and point.get("tag") in ("main", "mergeable")
+        ]
+        if written_version >= (0, 6, 1):
+            if len(build_points) > 7:
+                errors.append(
+                    "%s 构建知识点 %d 个，超过 7 个上限（地基 %d、承接 %d 不占构建名额）"
+                    % (receipt, len(build_points), len(foundation_points), len(carry_points))
+                )
+            elif len(build_points) < 4 and remaining:
+                errors.append(
+                    "%s 构建知识点只有 %d 个，但 Part %s 还有 %d 个未选构建候选：%s"
+                    % (
+                        receipt,
+                        len(build_points),
+                        part_index,
+                        len(remaining),
+                        "、".join(str(point.get("id")) for point in remaining),
+                    )
+                )
+            elif len(build_points) < 4:
+                warnings.append(
+                    "%s 构建知识点只有 %d 个：候选不足 4，按“不凑数”放行"
+                    % (receipt, len(build_points))
+                )
+        depth_counts = Counter()
+        for point in mine:
+            match = re.search(r"(?:^|[；;]\s*)深度=([做讲知])(?:[；;]|$)", str(point.get("note") or ""))
+            if match:
+                depth_counts[match.group(1)] += 1
 
         def section_name(head: str) -> str:
             match = re.match(r"(\d+)\.", head)
@@ -496,6 +545,11 @@ def check(
         )
         print("本部分覆盖：%s" % (cover or "（无 taught 条目指向该 part）"))
         print("当前积压：%s" % ("、".join(sorted(str(item) for item in queued)) if queued else "无"))
+        if depth_counts:
+            print(
+                "深度：做 %d · 讲 %d · 知 %d"
+                % (depth_counts.get("做", 0), depth_counts.get("讲", 0), depth_counts.get("知", 0))
+            )
 
     if drifted:
         print("ℹ️ %d 条章节文字已按章号命中：%s" % (len(drifted), "、".join(drifted[:6])))

@@ -98,7 +98,7 @@ description: Lathe 0.6.1 metadata 完整结构、Part 级路线、continuity 可
 | `parts` | 按顺序列课程正文与复习材料文件名 |
 | `experience_level` | `beginner` / `familiar` / `experienced`；续写沿用 |
 | `topic_novelty` | `new` / `adjacent` / `familiar`；驱动写作与研究预算 |
-| `course_plan` | 3–12 个 **Part 级**路线项，只写 part、标题、目标、前置；不要塞知识点 ID 或排队项 |
+| `course_plan` | 2–12 个 **Part 级**路线项，只写 part、标题、目标、前置；不要塞知识点 ID 或排队项。2 Part 只用于小而完整的课程，仍须满足每 Part 的构建配额或“候选不足不凑数” |
 | `changed_interfaces` | 活跃跨 Part 接口变更，最多 8 条；规则见下节 |
 | `part_versions` | 每写一个部分记录当时 Lathe 版本；历史检查按部分降级 |
 | `style_anchor` | 生成时选定，续写沿用 |
@@ -203,7 +203,7 @@ python3 <SKILL_DIR>/scripts/ledger_check.py <课程根目录> --continuity
 
 执行以下规则：
 
-- 生成前初始化 3–12 个 Part 级项；part-01 完成第 1 项。
+- 生成前初始化 2–12 个 Part 级项；part-01 完成第 1 项。只有内容确实不足以拆成 3 个独立学习单元时才用 2 项，不为凑数硬拆。
 - 续写默认推进下一项；用户改方向时更新路线并说明偏离原因。
 - 容量不足需要拆 Part 时，先让用户确认，再替换被拆项并同步知识表的“计划 Part”。
 - 收尾保留已走路线；完成度由 `goal` 与知识表门禁决定，不由路线项数量单独决定。
