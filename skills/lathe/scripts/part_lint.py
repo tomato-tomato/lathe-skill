@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -78,6 +79,19 @@ def tutorial_legacy(path: Path) -> bool:
     return bool(nums) and nums < (0, 6, 0)
 
 
+def verified_part(path: Path) -> bool:
+    """当前布局的 verify-result 若把该 part 记为 passed，则不再要求未验证横幅。"""
+    try:
+        layout = resolve_layout(path.parent)
+        data = json.loads(layout.verify_result_path.read_text(encoding="utf-8"))
+        return any(
+            item.get("part") == path.name and item.get("status") == "passed"
+            for item in data.get("parts", [])
+        )
+    except Exception:
+        return False
+
+
 def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
     try:
         resolve_layout(path.parent)
@@ -106,7 +120,7 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
 
     if not text.lstrip().startswith("# "):
         errors.append("第一行必须是一级标题 `# `")
-    if kind not in ("review", "finish") and "lathe:verify-status:start" not in text:
+    if kind not in ("review", "finish") and "lathe:verify-status:start" not in text and not verified_part(path):
         warnings.append("缺少验证状态横幅（新写的 part 必须在 H1 后插入未验证横幅）")
 
     if kind == "regular":
@@ -213,7 +227,8 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
     exercises = section(text, "练习")
     if exercises:
         sink = notes if legacy else errors
-        tier3 = re.findall(r"\*本题涉及的知识点（[^\n]*", exercises)
+        mandatory = exercises.split("选做", 1)[0]
+        tier3 = re.findall(r"\*本题涉及的知识点（[^\n]*", mandatory)
         for note in tier3:
             if "积压 ID" not in note:
                 sink.append("档 3 练习提醒没有写积压 ID")
