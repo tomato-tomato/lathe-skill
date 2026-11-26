@@ -1,6 +1,6 @@
 ---
 name: lathe
-version: 0.7.0
+version: 0.7.1
 description: 按需生成、续写、复习、验证、提问动手实践型技术教程。当用户说 /lathe 并附带主题时使用，如 "/lathe 用 Zig 构建数字合成器"；也处理续写(extend)、收尾完结(finish)、复习(review)、验证(verify)、提问(ask)、面试(interview)、标签(tag)、语气(voice)、扫描(scan)和列表(list)等教程操作。支持中文和英文关键词。
 ---
 
@@ -184,4 +184,4 @@ legacy 课程保留根目录旧布局，不自动迁移；用户明确要求整�
 
 ## 版本
 
-**技能版本：v0.7.0**。写入型操作同步更新 metadata 的 `lathe_version`；每个新 part 在 `part_versions` 记录本次版本。
+**技能版本：v0.7.1**。写入型操作同步更新 metadata 的 `lathe_version`；每个新 part 在 `part_versions` 记录本次版本。

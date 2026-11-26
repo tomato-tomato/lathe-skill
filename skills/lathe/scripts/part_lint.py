@@ -208,7 +208,7 @@ def lint(path: Path, kind: str, force_legacy: bool = False) -> int:
     unmarked = [b for b in blocks if not b["marked"]]
     if unmarked:
         where = "、".join(f"{b['line']}（{b['info'] or '无语言'}）" for b in unmarked)
-        warnings.append(f"{len(unmarked)} 个代码块未标记类型、会按 runnable 执行：第 {where} 行——新写的块请标明类型（检查点命令用 `bash runnable`，示例数据用 `text`）")
+        warnings.append(f"{len(unmarked)} 个代码块未标记类型、会按 runnable 执行：第 {where} 行——新写的块请在 fence 上方单独一行加 `[//]: # (lathe <类型>)`（前面留空行），示例数据用 `text`")
     for b in blocks:
         where = f"第 {b['line']} 行 ```{b['info'] or '（未标记）'}"
         if b["info"] and not b["marked"] and any(t in b["info"] for t in ("runnable", "fragment", "exercise", "expected_failure")):

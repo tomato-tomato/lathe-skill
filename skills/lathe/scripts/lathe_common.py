@@ -520,17 +520,46 @@ def is_marked(info: str) -> bool:
     return any(token in BLOCK_TYPES for token in tokens) or (bool(tokens) and tokens[0] in DIAGRAM_LANGS)
 
 
+LATHE_MARKER = re.compile(r"^\[//\]:\s*#\s*\(lathe\s+([^)]*)\)\s*$")
+
+
+def _marker_before(text: str, pos: int) -> Optional[Tuple[str, Optional[str]]]:
+    """读 fence 上方最近的 `[//]: # (lathe <类型> [路径])` 标记行。
+
+    这种写法在任何 markdown 渲染器里都不产生输出（链接引用定义），
+    所以类型信息可以脱离 info string 存放，围栏只留纯语言、不影响复制。
+    """
+    for line in reversed(text[:pos].splitlines()):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        match = LATHE_MARKER.match(stripped)
+        if not match:
+            return None
+        parts = match.group(1).split()
+        kind = next((p for p in parts if p in BLOCK_TYPES), None)
+        path = next((p for p in parts if p not in BLOCK_TYPES), None)
+        return (kind, path)
+    return None
+
+
 def code_blocks(text: str) -> List[Dict[str, Any]]:
-    """返回 [{info, lang, type, body, line}]；line 是 fence 起始行号（1 起）。"""
+    """返回 [{info, lang, type, body, line}]；line 是 fence 起始行号（1 起）。
+
+    类型优先取 fence 上方的 `[//]: # (lathe <类型> ...)` 标记，
+    没有标记时回落到 info string（兼容旧文档）。
+    """
     blocks: List[Dict[str, Any]] = []
     for match in FENCE.finditer(text):
         info, body = match.group(1), match.group(2)
+        marker = _marker_before(text, match.start())
+        marker_type = marker[0] if marker else None
         blocks.append(
             {
                 "info": info.strip(),
                 "lang": block_lang(info),
-                "type": block_type(info),
-                "marked": is_marked(info),
+                "type": marker_type or block_type(info),
+                "marked": bool(marker_type) or is_marked(info),
                 "body": body,
                 "line": text.count("\n", 0, match.start()) + 1,
             }

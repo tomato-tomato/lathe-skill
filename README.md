@@ -2,15 +2,15 @@
 
 > 把 [Lathe](https://github.com/devenjarvis/lathe) 提炼成**不依赖 CLI 的 Agent Skill**（持续迭代中），让支持 Agent Skills 的编码助手按需生成、续写、复习、验证动手实践型技术教程。我自己用它学 Rust。
 
-当前版本 **v0.7.0** ｜ 技能包下载：[Releases](https://github.com/tomato-tomato/lathe-skill/releases) ｜ 完整用法：[Lathe 技能使用教程](./docs/skills-tutorial.md)
+当前版本 **v0.7.1** ｜ 技能包下载：[Releases](https://github.com/tomato-tomato/lathe-skill/releases) ｜ 完整用法：[Lathe 技能使用教程](./docs/skills-tutorial.md)
 
 这套 skill 要解决的不是「AI 能不能写出一篇教程」，而是三个更实际的问题：**承诺要讲的知识点有没有真的讲、讲在哪、没讲的去了哪**；**每次调用要读多少规则**（全技能约 300 KB，按操作拆分加载，列表/提问/扫描不会去读写作核心）；以及**规则升级后旧教程要不要返工**（不需要，0.6.0 旧布局继续原地兼容）。
 
 ## 30 秒上手
 
 ```bash
-# 1. 从 Releases 下载最新技能包并解压（如 lathe-0.7.0.zip，顶层只有 lathe/）
-unzip lathe-0.7.0.zip -d ./skills-download
+# 1. 从 Releases 下载最新技能包并解压（如 lathe-0.7.1.zip，顶层只有 lathe/）
+unzip lathe-0.7.1.zip -d ./skills-download
 
 # 2. 连同 references/ 与 scripts/ 一起复制到技能目录（用户级：所有项目可用）
 cp -r skills-download/lathe ~/.qoderwork/skills/
@@ -74,7 +74,8 @@ cp -r skills-download/lathe ~/.qoderwork/skills/
 | v0.5.5     | ——      | 未单独发布，改动（练习承接三档、积压治理、`supersedes`）全部并入 v0.6.0                                               |
 | v0.6.0     | 10月25  | 知识点账本 + 写前确认/覆盖回执 + 交付前试跑与自带脚本 + 读取端三轮实测修复                                            |
 | v0.6.1     | 10月26  | 新课程 `_lathe/` 辅助目录 + 可编辑八列知识表 + 清单三选一与统一选点优先级 + 旧课程原地兼容                             |
-| **v0.7.0** | 10月26  | 知识点池 + 每次现选：七列池表、取消点→Part 绑定、未选候选回执、未学完收尾提示与续写继续                             |
+| **v0.7.1** | 11月26  | 代码块类型标记移出 info string：fence 只留语言，类型改写到上方 `[//]: # (lathe <类型>)` 标记行，修预览与复制            |
+| v0.7.0     | 10月26  | 知识点池 + 每次现选：七列池表、取消点→Part 绑定、未选候选回执、未学完收尾提示与续写继续                             |
 
 每一轮改动都来自真实使用与实测记录，完整清单见 [Releases](https://github.com/tomato-tomato/lathe-skill/releases)。
 
